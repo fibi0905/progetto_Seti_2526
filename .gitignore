@@ -1,0 +1,8 @@
+# Eseguibili Unix/Linux (non hanno estensione)
+*.[!.]
+
+# Eseguibili Windows
+*.exe
+*.dll
+*.obj
+*.lib
