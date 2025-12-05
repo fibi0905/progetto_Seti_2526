@@ -1,15 +1,11 @@
-#include <dirent.h>
-#include <stdio.h>
+#include <netinet/in.h>
+#include <pthread.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <netinet/in.h>  
-#include <arpa/inet.h>   
-#include <sys/socket.h>  
-#include <string.h>
+
+#define MAX_CLIENT 100
+#define ID_LEN 9
+#define MAX_LEN 201
+
 
 typedef struct user user;
 typedef struct msg msg;
@@ -25,7 +21,7 @@ enum typFlux{
 };
 
 struct user{
-    char id [9];
+    char id [ID_LEN];
     struct sockaddr_in add; // ip + porta udp
     unsigned int pass;
 
@@ -33,13 +29,13 @@ struct user{
     msg * listMsg;
 
     unsigned int nFri;
-    char  listFri [99] [9]; // dato che il server ha un massimo di 100 user, 
+    char  listFri [MAX_CLIENT-1] [ID_LEN]; // dato che il server ha un massimo di 100 user, 
                         // può avere un massimo 99 amici 
 };
 
 struct msg{
-    char id [9];
-    char  msg [201]; //200 caratteri + \0
+    char id [ID_LEN];
+    char  value [MAX_LEN]; //200 caratteri + \0
     typFlux typeMSG; //gestire il tipo.
     msg * next;
-}
+};
