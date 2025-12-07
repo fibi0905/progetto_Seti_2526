@@ -10,6 +10,7 @@
 #define NOTOK 0
 #define NOTFIND -1
 
+
 typedef struct user user;
 typedef struct msg msg;
 
@@ -61,15 +62,3 @@ unsigned int serverInit ();
 void * pthreadConection (void * sock_desc);
 void serverClose();
 
-//Funzioni utiliy (forse solo da mettere in .c)
-int findUser(const char id [ID_LEN]);
-
-unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass );
-
-unsigned int modUser (const unsigned int pox, struct sockaddr_in add);
-
-unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]);
-
-int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]);
-
-int addMSG (const char idD, const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip);

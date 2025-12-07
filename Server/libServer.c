@@ -19,38 +19,7 @@ int udpSocket = -1;
 pthread_mutex_t semUDP = PTHREAD_MUTEX_INITIALIZER;
 
 
-
-
-unsigned int serverInit (){
-    printf ("server Start: ");
-
-    if(pthread_mutex_init(&semList, NULL) != 0 || 
-        pthread_mutex_init(&semNuser, NULL) != 0  || 
-            pthread_mutex_init(&semUDP, NULL) != 0 
-    ){
-
-        perror("server init");
-        return NOTOK;
-    }
-
-    //Creazione socket UDP
-    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if(udp_socket < 0) {
-        perror("UDP socket creation");
-        return NOTOK;
-    }
-
-    return OK;
-}
-
-void serverClose() {
-    if(udp_socket >= 0) {
-        close(udp_socket);
-    }
-    pthread_mutex_destroy(&semList);
-    pthread_mutex_destroy(&semNuser);
-    pthread_mutex_destroy(&semUDP);
-}
+/*-------------------Funzioni Gestione Utenti-------------------*/
 
 int findUser(const char id [ID_LEN]){
     pthread_mutex_lock(&semNuser);
@@ -73,6 +42,8 @@ int findUser(const char id [ID_LEN]){
     return NOTFIND;
 
 }
+
+unsigned int modUser (const unsigned int pox, struct sockaddr_in add);
 
 unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
     int pox;
@@ -107,8 +78,106 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
     return OK;
 }
 
+//devo controllare che idR (idReciver) è amico di idS (idSender)
+//dato che solo se si è amici allora si può inviare un messaggio 
 unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]){
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1) {
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    } 
+    pthread_mutex_unlock(&semNuser);
+
     
+    //non c'è bisogno di semafori prima in quando in findUser vi sono 
+    unsigned int pox;
+    //Controllo che idS e idR esistano, e se si mi salvo la poszioned di idR
+    if( findUser (idS) == NOTFIND || (pox =findUser(idR)) == NOTFIND ) return NOTOK;
+    
+
+    //-----Controllo che siano amici 
+    pthread_mutex_lock(&semList);
+
+    user user_idR = listUser[pox];
+
+    for(unsigned int i = 0; i< user_idR.nFri; i++){
+        if(strcmp(user_idR.listFri[i], idS) == 0){
+            pthread_mutex_unlock(&semList);
+            return OK;
+        }
+    }
+
+    pthread_mutex_unlock(&semList);
+    return NOTOK;
+
+}
+
+//devo aggiungere ad idD (idDestination), idS (idSorgente) come amico; 
+unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
+     pthread_mutex_lock(&semNuser);
+    if(nUser <= 1) {
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    } 
+    pthread_mutex_unlock(&semNuser);
+
+    //non c'è bisogno di semafori prima in quando in findUser vi sono 
+    unsigned int pox;
+    //Controllo che idS e idR esistano, e se si mi salvo la poszioned di idR
+    if( findUser (idS) == NOTFIND || (pox =findUser(idD)) == NOTFIND ) return NOTOK;
+    
+   //-----Aggiungo amico  
+    pthread_mutex_lock(&semList);
+    unsigned int nFreind = listUser[pox].nFri;
+    if(nFreind >= MAX_CLIENT-1){
+        pthread_mutex_unlock(&semList);
+        return NOTOK;
+    }
+
+    strcpy(listUser[pox].listFri[nFreind], idS);
+    listUser[pox].nFri ++;
+    pthread_mutex_unlock(&semList);
+
+
+    return OK;
+}
+
+
+
+unsigned int addMSG (const char idD, const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip);
+
+
+/*-------------------Funzioni TCP e UDP-------------------*/
+
+unsigned int serverInit (){
+    printf ("server Start: ");
+
+    if(pthread_mutex_init(&semList, NULL) != 0 || 
+        pthread_mutex_init(&semNuser, NULL) != 0  || 
+            pthread_mutex_init(&semUDP, NULL) != 0 
+    ){
+
+        perror("server init");
+        return NOTOK;
+    }
+
+    //Creazione socket UDP
+    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if(udpSocket < 0) {
+        perror("UDP socket creation");
+        return NOTOK;
+    }
+
+    return OK;
+}
+
+void serverClose() {
+    if(udpSocket >= 0) {
+        close(udpSocket);
+    }
+    pthread_mutex_destroy(&semList);
+    pthread_mutex_destroy(&semNuser);
+    pthread_mutex_destroy(&semUDP);
 }
 
 
@@ -129,7 +198,7 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
             return NOTOK;
     }
 
-    ssize_t byteSent = send(sock, msg, 8,0 );  
+    ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
     if(byteSent <= 0) return NOTOK;
 
     return OK;
