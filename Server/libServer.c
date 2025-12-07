@@ -6,7 +6,6 @@
 
 /*-------Variabili & Semafori-------*/
 
-
 //-------Gestione User
 static user listUser [MAX_CLIENT];
 static unsigned int nUser = 0;
@@ -17,6 +16,8 @@ pthread_mutex_t semNuser = PTHREAD_MUTEX_INITIALIZER;
 //-------Gestione UDP
 int udpSocket = -1;
 pthread_mutex_t semUDP = PTHREAD_MUTEX_INITIALIZER;
+
+/*------------------------------------*/
 
 
 /*-------------------Funzioni Gestione Utenti-------------------*/
@@ -145,6 +146,9 @@ unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
 
 
 unsigned int addMSG (const char idD, const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip);
+
+/*--------------------------------------------------------------*/
+
 
 
 /*-------------------Funzioni TCP e UDP-------------------*/
