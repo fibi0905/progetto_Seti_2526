@@ -13,7 +13,8 @@
 typedef struct user user;
 typedef struct msg msg;
 
-typedef enum typFlux  typFlux;
+typedef enum typFlux typFlux;
+typedef enum typSimpleMsg typSimpleMsg;
 
 enum typFlux{
     FRIE_Req,
@@ -21,6 +22,18 @@ enum typFlux{
     FRIE_R,
     MSG,
     FLOO,
+};
+
+enum typSimpleMsg{
+    WELCO,
+    GOBYE,
+    FRIE_OK,
+    FRIE_NOTOK,
+    MESS_OK,
+    MESS_NOTOK,
+    FLOO_OK,
+    ACKRF,
+    NOCON,
 };
 
 struct user{
@@ -46,7 +59,7 @@ struct msg{
 //funzioni gestione sever 
 unsigned int serverInit ();
 void * pthreadConection (void * sock_desc);
-
+void serverClose();
 
 //Funzioni utiliy (forse solo da mettere in .c)
 int findUser(const char id [ID_LEN]);
@@ -56,10 +69,6 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
 unsigned int modUser (const unsigned int pox, struct sockaddr_in add);
 
 unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]);
-
-void OK_send (const char id [ID_LEN], typFlux tip); // da modificare (?)
-
-void NOTOK_send (const char id [ID_LEN], typFlux tip); // da modificare (?)
 
 int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]);
 
