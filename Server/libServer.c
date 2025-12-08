@@ -260,6 +260,7 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
         default:
             return NOTOK;
     }
+    //aggiungi semafori !!!!
 
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
     if(byteSent <= 0) return NOTOK;
@@ -267,6 +268,9 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
     return OK;
 
 }
+
+
+/*-----------------------------------------------------*/
 
 void * pthreadConection(void * sockClient){
     int sClient =  * (int *) sockClient;

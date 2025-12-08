@@ -43,7 +43,7 @@ struct user{
     unsigned int pass;
 
     unsigned int nMsg;
-    msg * listMsg;
+    msg * listMsg; // ?Possiblie controllo sul numero massimo?
 
     unsigned int nFri;
     char  listFri [MAX_CLIENT-1] [ID_LEN]; // dato che il server ha un massimo di 100 user, 
