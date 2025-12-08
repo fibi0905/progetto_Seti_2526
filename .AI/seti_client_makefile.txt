@@ -1,0 +1,38 @@
+# Makefile per il Client SETI
+
+CC = gcc
+CFLAGS = -Wall -Wextra -pthread -g
+TARGET = client
+OBJS = client_main.o client_network.o client_commands.o client_handlers.o client_utils.o
+
+# Regola principale
+all: $(TARGET)
+
+# Linking
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+
+# Compilazione file oggetto
+client_main.o: client_main.c client.h
+	$(CC) $(CFLAGS) -c client_main.c
+
+client_network.o: client_network.c client.h
+	$(CC) $(CFLAGS) -c client_network.c
+
+client_commands.o: client_commands.c client.h
+	$(CC) $(CFLAGS) -c client_commands.c
+
+client_handlers.o: client_handlers.c client.h
+	$(CC) $(CFLAGS) -c client_handlers.c
+
+client_utils.o: client_utils.c client.h
+	$(CC) $(CFLAGS) -c client_utils.c
+
+# Pulizia
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+# Ricompila tutto
+rebuild: clean all
+
+.PHONY: all clean rebuild
