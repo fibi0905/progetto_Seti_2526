@@ -215,7 +215,7 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
 /*-------------------Funzioni TCP e UDP-------------------*/
 
 unsigned int serverInit (){
-    printf ("server Start: ");
+    printf ("server Start:\n");
 
     if(pthread_mutex_init(&semList, NULL) != 0 || 
         pthread_mutex_init(&semNuser, NULL) != 0  || 
@@ -246,17 +246,17 @@ void serverClose() {
 }
 
 unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
-    const char msg [9];
+    char msg [9];
     switch (tip){
-        case WELCO: strcmp(msg, "WELCO+++\0");
-        case GOBYE: strcmp(msg, "GOBYE+++\0");
-        case FRIE_OK: strcmp(msg, "FRIE>+++\0");
-        case FRIE_NOTOK: strcmp(msg, "FRIE<+++\0");
-        case MESS_OK: strcmp(msg, "MESS>+++\0");
-        case MESS_NOTOK: strcmp(msg, "MESS<+++\0");
-        case FLOO_OK: strcmp(msg, "FLOO>+++\0");
-        case ACKRF: strcmp(msg, "ACKRF+++\0");
-        case NOCON: strcmp(msg, "NOCON+++\0");
+        case WELCO: strcpy(msg, "WELCO+++\0");
+        case GOBYE: strcpy(msg, "GOBYE+++\0");
+        case FRIE_OK: strcpy(msg, "FRIE>+++\0");
+        case FRIE_NOTOK: strcpy(msg, "FRIE<+++\0");
+        case MESS_OK: strcpy(msg, "MESS>+++\0");
+        case MESS_NOTOK: strcpy(msg, "MESS<+++\0");
+        case FLOO_OK: strcpy(msg, "FLOO>+++\0");
+        case ACKRF: strcpy(msg, "ACKRF+++\0");
+        case NOCON: strcpy(msg, "NOCON+++\0");
         default:
             return NOTOK;
     }
@@ -268,3 +268,12 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
 
 }
 
+void * pthreadConection(void * sockClient){
+    int sClient =  * (int *) sockClient;
+    //libero memoria allocata, nel main per librerare spazio 
+    //dato la possibilià che vi siano più client 
+    free(sockClient);
+
+    printf("Thread avviato: connesione con il client sock: %d\n", sClient);
+    
+}
