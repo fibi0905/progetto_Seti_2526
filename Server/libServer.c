@@ -49,7 +49,7 @@ unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
     if(pox < 0) return NOTOK;
 
     pthread_mutex_lock(&semNuser);
-    if(nUser <= 1) {
+    if(nUser < 1) {
         pthread_mutex_unlock(&semNuser);
         return NOTOK;
     } 
@@ -80,9 +80,6 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
         return NOTOK;
     }
 
-
-    pthread_mutex_lock (&semList); 
-
     user newUser;
     strcpy(newUser.id, id);
     newUser.add = add;
@@ -90,6 +87,8 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
     newUser.nMsg = 0;
     newUser.listMsg = NULL;
     newUser.nFri = 0;
+
+    pthread_mutex_lock (&semList); 
 
     listUser[nUser] = newUser;
     nUser ++;
@@ -114,7 +113,7 @@ unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]){
     //non c'è bisogno di semafori prima in quando in findUser vi sono 
     unsigned int pox;
     //Controllo che idS e idR esistano, e se si mi salvo la poszioned di idR
-    if( findUser (idS) == NOTFIND || (pox =findUser(idR)) == NOTFIND ) return NOTOK;
+    if( findUser (idS) == NOTFIND || (pox = findUser(idR)) == NOTFIND ) return NOTOK;
     
 
     //-----Controllo che siano amici 
@@ -258,7 +257,6 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
         case FLOO_OK: strcmp(msg, "FLOO>+++\0");
         case ACKRF: strcmp(msg, "ACKRF+++\0");
         case NOCON: strcmp(msg, "NOCON+++\0");
-          
         default:
             return NOTOK;
     }
