@@ -208,6 +208,10 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     return OK;
 }
 
+//rimuove solo il il primo messaggio, dato che quando si fa consult, si ritorna solo il primo messaggio
+//oltre a rimuovere mi da anche il valore del primo messaggio, inserito al interno di msgRM -> messaggio rimosso  
+unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM);
+
 /*--------------------------------------------------------------*/
 
 
