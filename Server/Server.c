@@ -19,7 +19,7 @@ int main (int argc, char * argv[]){
     int r;
 
     //inalizazione di tutti gli insieme dei semafori e del socket UDP
-    if (server_init() != 0) { 
+    if (serverInit() == NOTOK) { 
         fprintf(stderr, "Errore durante l'inizializzazione del server.\n");
         return EXIT_FAILURE;
     }
@@ -53,7 +53,7 @@ int main (int argc, char * argv[]){
 
         while (1){
             int *  sock_client = (int *) malloc(sizeof(int));
-            sock_client = accept(sock_server, (pSockaddr) &sockClient, &si);
+            *sock_client = accept(sock_server, (pSockaddr) &sockClient, &si);
             if(sock_client >= 0){
                 pthread_t threadClient;
                 pthread_create(&threadClient, NULL, pthreadConection, sock_client);

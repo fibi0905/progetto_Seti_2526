@@ -59,6 +59,6 @@ struct msg{
 
 //funzioni gestione sever 
 unsigned int serverInit ();
-void * pthreadConection (void * sock_desc);
+void * pthreadConection (void * sockClient);
 void serverClose();
 
