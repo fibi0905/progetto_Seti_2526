@@ -44,7 +44,28 @@ int findUser(const char id [ID_LEN]){
 
 }
 
-unsigned int modUser (const unsigned int pox, struct sockaddr_in add);
+unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
+
+    if(pox < 0) return NOTOK;
+
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1) {
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    } 
+    pthread_mutex_unlock(&semNuser);
+
+
+    pthread_mutex_lock(&semList);
+
+    listUser[pox].add = add;
+
+    pthread_mutex_lock(&semList);
+    
+
+    return OK;
+
+}
 
 unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
     int pox;
@@ -115,7 +136,7 @@ unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]){
 
 //devo aggiungere ad idD (idDestination), idS (idSorgente) come amico; 
 unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
-     pthread_mutex_lock(&semNuser);
+    pthread_mutex_lock(&semNuser);
     if(nUser <= 1) {
         pthread_mutex_unlock(&semNuser);
         return NOTOK;
@@ -144,8 +165,49 @@ unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
 }
 
 
+//aggiungo ad idD (idDestinatario) il messaggio che arriva da idS (idSorgente)
+unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip){
+    pthread_mutex_lock(&semNuser);
+    if(nUser <1) {
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    } 
+    pthread_mutex_unlock(&semNuser);
 
-unsigned int addMSG (const char idD, const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip);
+    //non c'è bisogno di semafori prima in quando in findUser vi sono 
+    unsigned int pox;
+    //Controllo che idS e idR esistano, e se si mi salvo la poszioned di idR
+    if( findUser (idS) == NOTFIND || (pox =findUser(idD)) == NOTFIND ) return NOTOK;
+
+    //Creazione messaggio 
+    msg * newMsg  = (msg* ) malloc (sizeof(msg));
+    if(newMsg == NULL) return NOTOK;
+    strcpy(newMsg->id, idS);
+    strcpy(newMsg->value, value);
+    newMsg->typeMSG = tip;
+    newMsg->next = NULL;
+
+    pthread_mutex_lock(&semNuser);
+    if(listUser[pox].listMsg == NULL){
+        listUser[pox].listMsg = newMsg;
+        listUser[pox].nMsg++;
+        pthread_mutex_unlock(&semNuser);
+        return OK;
+    }
+
+    msg * currMsg = listUser[pox].listMsg;
+
+    while (currMsg->next != NULL){
+        currMsg = currMsg->next;
+    }
+
+    currMsg->next = newMsg;
+    
+    listUser[pox].nMsg++;
+    pthread_mutex_unlock(&semNuser);
+
+    return OK;
+}
 
 /*--------------------------------------------------------------*/
 
@@ -183,7 +245,6 @@ void serverClose() {
     pthread_mutex_destroy(&semNuser);
     pthread_mutex_destroy(&semUDP);
 }
-
 
 unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
     const char msg [9];
