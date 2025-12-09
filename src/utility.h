@@ -8,3 +8,5 @@
 //MESS? -> 5byte + id-> 8byte + mess-> 200byte + "+++" ->3byte + "_ _" ->2byte  = per un totale di 218 
 #define MAX_TCP_MESAGGE 256 
 #define MAX_LEN 201
+
+#define SERVER_PORT 8080
