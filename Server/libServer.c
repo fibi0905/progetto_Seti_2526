@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 
+
 /*-------Variabili & Semafori-------*/
 
 //-------Gestione User
@@ -299,10 +300,53 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
 
 }
 
-unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff);
+
+unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
+    if(buff == NULL || dimBuff < 8) return NOTOK;
+
+    size_t msgTotlen = 0;
+    char tmp;
+    unsigned int okMsg = 0;
+    unsigned int plusCounter = 0;
+
+
+    //inizializza il buffer con tutti 0
+    memset(buff, 0, dimBuff);
+
+    while (msgTotlen < dimBuff-1){
+        //problema !!! se non ci sono +++ non termina mai !!!
+        ssize_t readByte = read(sock, &tmp, 1);
+
+        if(readByte <= 0 ) return NOTOK;
+
+        buff[msgTotlen] = tmp;
+        msgTotlen++;
+
+        if(tmp == '+'){
+            plusCounter ++;
+            if(plusCounter == 3){
+                okMsg = 1 ;
+                break;
+            }
+        }else{
+            plusCounter =0;
+        }
+    }
+    
+    if(!okMsg){
+        return NOTOK;
+    }
+
+    buff[msgTotlen] ='\0';
+
+    return OK;
+
+}
 
 /*-----------------------------------------------------*/
 
+
+/*------------------Funzione per Thread------------------*/
 void * pthreadConection(void * sockClient){
     int sClient =  * (int *) sockClient;
     //libero memoria allocata, nel main per librerare spazio 
@@ -310,5 +354,18 @@ void * pthreadConection(void * sockClient){
     free(sockClient);
 
     printf("Thread avviato: connesione con il client sock: %d\n", sClient);
+
+    char buff[MAX_TCP_MESAGGE];
+    if(readTCPmessage(sClient, buff, sizeof(buff)) != NOTOK){
+        printf("Messaggio ricevuto: %s\n", buff);
+       
+    }
+    else{
+        printf("Errore nella reaTCPmessage\n");
+        
+    }
     
+
+    close(sClient);
+    return NULL;
 }

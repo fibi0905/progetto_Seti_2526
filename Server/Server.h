@@ -1,7 +1,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdlib.h>
-#include "src/utility.h"
+#include "../src/utility.h"
 
 #define MAX_CLIENT 100
 #define ID_LEN 9
@@ -57,6 +57,9 @@ struct msg{
     typFlux typeMSG; //gestire il tipo.
     msg * next;
 };
+
+
+
 
 //funzioni gestione sever 
 unsigned int serverInit ();
