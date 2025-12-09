@@ -210,7 +210,31 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
 
 //rimuove solo il il primo messaggio, dato che quando si fa consult, si ritorna solo il primo messaggio
 //oltre a rimuovere mi da anche il valore del primo messaggio, inserito al interno di msgRM -> messaggio rimosso  
-unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM);
+unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM){
+    pthread_mutex_lock(&semNuser);
+    if(nUser <1) {
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    } 
+    pthread_mutex_unlock(&semNuser);
+
+    unsigned int pox;
+    if((pox = findUser(idD)) == NOTFIND) return NOTOK;
+
+    pthread_mutex_lock(&semList);
+
+    if( listUser[pox].listMsg == NULL) {
+        pthread_mutex_unlock(&semList);
+        return NOTOK;
+    }
+
+    msgRM = listUser[pox].listMsg;
+    listUser[pox].listMsg = msgRM->next;
+
+    pthread_mutex_unlock(&semList);
+
+    return OK;
+}
 
 /*--------------------------------------------------------------*/
 
@@ -265,14 +289,17 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
             return NOTOK;
     }
     //aggiungi semafori !!!!
-
+    pthread_mutex_lock(&semUDP);
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
+    pthread_mutex_unlock(&semUDP);
+
     if(byteSent <= 0) return NOTOK;
 
     return OK;
 
 }
 
+unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff);
 
 /*-----------------------------------------------------*/
 

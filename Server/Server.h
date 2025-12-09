@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include "src/utility.h"
 
 #define MAX_CLIENT 100
 #define ID_LEN 9
