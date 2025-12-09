@@ -307,12 +307,14 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     size_t msgTotlen = 0;
     char tmp;
     unsigned int okMsg = 0;
-    unsigned int plusCounter = 0;
+   // unsigned int plusCounter = 0;
 
 
     //inizializza il buffer con tutti 0
     memset(buff, 0, dimBuff);
 
+    msgTotlen = read(sock, buff, MAX_TCP_MESAGGE);
+    /*
     while (msgTotlen < dimBuff-1){
         //problema !!! se non ci sono +++ non termina mai !!!
         ssize_t readByte = read(sock, &tmp, 1);
@@ -335,7 +337,7 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     
     if(!okMsg){
         return NOTOK;
-    }
+    }*/
 
     buff[msgTotlen] ='\0';
 
