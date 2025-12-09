@@ -240,6 +240,15 @@ unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM){
 /*--------------------------------------------------------------*/
 
 
+/*------------------Funzioni Gestione Utility------------------*/
+
+
+unsigned int okMSG(const char * msg);
+
+/*--------------------------------------------------------------*/
+
+
+
 
 /*-------------------Funzioni TCP e UDP-------------------*/
 
@@ -301,49 +310,24 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
 }
 
 
+//funziona ma insicura !!!
 unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     if(buff == NULL || dimBuff < 8) return NOTOK;
 
     size_t msgTotlen = 0;
-    char tmp;
-    unsigned int okMsg = 0;
-   // unsigned int plusCounter = 0;
-
-
+    
     //inizializza il buffer con tutti 0
     memset(buff, 0, dimBuff);
 
     msgTotlen = read(sock, buff, MAX_TCP_MESAGGE);
-    /*
-    while (msgTotlen < dimBuff-1){
-        //problema !!! se non ci sono +++ non termina mai !!!
-        ssize_t readByte = read(sock, &tmp, 1);
-
-        if(readByte <= 0 ) return NOTOK;
-
-        buff[msgTotlen] = tmp;
-        msgTotlen++;
-
-        if(tmp == '+'){
-            plusCounter ++;
-            if(plusCounter == 3){
-                okMsg = 1 ;
-                break;
-            }
-        }else{
-            plusCounter =0;
-        }
-    }
     
-    if(!okMsg){
-        return NOTOK;
-    }*/
-
     buff[msgTotlen] ='\0';
 
     return OK;
 
 }
+
+
 
 /*-----------------------------------------------------*/
 
