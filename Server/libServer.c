@@ -7,6 +7,9 @@
 
 /*-------Variabili & Semafori-------*/
 
+//-------Debug
+unsigned int DEB = 0;
+
 //-------Gestione User
 static user listUser [MAX_CLIENT];
 static unsigned int nUser = 0;
@@ -243,7 +246,34 @@ unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM){
 /*------------------Funzioni Gestione Utility------------------*/
 
 
-unsigned int okMSG(const char * msg);
+unsigned int okMSG(const char * msg, size_t dimMsg){
+    if(dimMsg<8){
+        return NOTOK;
+    }
+
+    
+   if(DEB) printf("Controllo che il messaggio inviato sia coretto\n");
+
+    dimMsg--;
+
+    if (dimMsg >= 3) {
+        if (msg[dimMsg - 2] != '+' && 
+            msg[dimMsg - 1] != '+' && 
+            msg[dimMsg] != '+') {
+            return NOTOK;
+        }
+    }
+
+    char type[6];
+     
+    strncpy(type, msg, 5);
+
+    type[5] = '\0';
+
+    if(DEB) printf("il valore dei primi 5 byte e: %s\n", type);
+
+    return OK;
+}
 
 /*--------------------------------------------------------------*/
 
@@ -252,8 +282,14 @@ unsigned int okMSG(const char * msg);
 
 /*-------------------Funzioni TCP e UDP-------------------*/
 
-unsigned int serverInit (){
-    printf ("server Start:\n");
+unsigned int serverInit (unsigned int d){
+    if(d){
+        printf ("Server Start Modalità debug:\n");
+        DEB = 1;
+    }
+    else{
+        printf ("Server Start:\n");
+    }
 
     if(pthread_mutex_init(&semList, NULL) != 0 || 
         pthread_mutex_init(&semNuser, NULL) != 0  || 
@@ -281,6 +317,8 @@ void serverClose() {
     pthread_mutex_destroy(&semList);
     pthread_mutex_destroy(&semNuser);
     pthread_mutex_destroy(&semUDP);
+
+    printf("Server close\n");
 }
 
 unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
@@ -298,7 +336,7 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
         default:
             return NOTOK;
     }
-    //aggiungi semafori !!!!
+   
     pthread_mutex_lock(&semUDP);
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
     pthread_mutex_unlock(&semUDP);
@@ -309,25 +347,52 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
 
 }
 
-
 //funziona ma insicura !!!
 unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
-    if(buff == NULL || dimBuff < 8) return NOTOK;
-
+    if (buff == NULL || dimBuff < 8) {
+        return NOTOK;
+    }
+    
     size_t msgTotlen = 0;
+    unsigned int plus = 0;
+    char tempBuf;
     
-    //inizializza il buffer con tutti 0
+    
+    // Inizializza il buffer
     memset(buff, 0, dimBuff);
-
-    msgTotlen = read(sock, buff, MAX_TCP_MESAGGE);
     
-    buff[msgTotlen] ='\0';
+    // Legge byte per byte fino a trovare "+++"
+    while (msgTotlen < dimBuff - 1) {
+        ssize_t bytesRead = read(sock, &tempBuf, 1);
+        
+        if (bytesRead <= 0) {
+            // Errore o connessione chiusa
+            return NOTOK;
+        }
+        
+        buff[msgTotlen] = tempBuf;
+        msgTotlen++;
+        
+        // Controlla se abbiamo trovato la sequenza terminatrice "+++"
+        if (tempBuf == '+') {
+            plus++;
+            if (plus == 3) {
+                break; 
+            }
+        } else {
+            plus = 0; 
+        }
+    }
 
+    if((msgTotlen-3) <8) return NOTOK;
+
+    buff[msgTotlen] ='\0';
     return OK;
+
 
 }
 
-
+int regis(char *msg);
 
 /*-----------------------------------------------------*/
 
@@ -342,14 +407,60 @@ void * pthreadConection(void * sockClient){
     printf("Thread avviato: connesione con il client sock: %d\n", sClient);
 
     char buff[MAX_TCP_MESAGGE];
-    if(readTCPmessage(sClient, buff, sizeof(buff)) != NOTOK){
-        printf("Messaggio ricevuto: %s\n", buff);
-       
+
+    if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
+        if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+        close(sClient);
+        return NULL;
     }
+
+    char type[6];
+
+    strncpy(type, buff, 5);
+
+    type[5]='\0';
+
+
+    if(strcmp(type, "REGIS")){
+        if(DEB) printf("registrazione nuovo utente\n");
+    }
+    
+    
+    else if (strcmp(type, "CONNE")){
+        if(DEB) printf("connesione utente\n");
+    }
+    
+    
+    else if (strcmp(type, "MESS?")){
+        if(DEB) printf("invio di messaggio\n");
+    }
+    
+    
+    else if (strcmp(type, "FRIE?")){
+        if(DEB) printf("nuova richiesta d'amicizia\n");
+    }
+    
+    else if (strcmp(type, "FLOO?")){
+        if(DEB) printf("invio di FLOO\n");
+    }
+
+    else if (strcmp(type, "LIST?")){
+        if(DEB) printf("richiesta lista utenti\n");
+    }
+
+    else if (strcmp(type, "CONSU")){
+        if(DEB) printf("richiesta di consultazione fulussi\n");
+    }
+
     else{
-        printf("Errore nella reaTCPmessage\n");
-        
+        if(DEB) printf("richiesta sconosciuta, chiusura connesione\n");
+        close(sClient);
+        return NULL;
     }
+    
+
+
+    
     
 
     close(sClient);

@@ -31,7 +31,7 @@ int main (int argc, char * argv[]){
     if(DEBUG) printf("Avvio serverInit()\n");
 
     //inalizazione di tutti gli insieme dei semafori e del socket UDP
-    if (serverInit() == NOTOK) { 
+    if (serverInit(DEBUG) == NOTOK) { 
         fprintf(stderr, "Errore durante l'inizializzazione del server.\n");
         return EXIT_FAILURE;
     }
