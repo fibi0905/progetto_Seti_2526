@@ -392,7 +392,7 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
 
 }
 
-int regis(char *msg);
+int regis(char *msg, int sock);
 
 /*-----------------------------------------------------*/
 
