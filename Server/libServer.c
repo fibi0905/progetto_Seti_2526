@@ -412,7 +412,7 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
     id[8] ='\0';
 
     strncpy(strPORT, msg+15, 4); //sto copiando solo port -->  REGIS (5) + (1) + ID(8) + (1) = 15 byte da slatare
-    id[4] ='\0';
+    strPORT[4] ='\0';
 
     //estraggo solo i due byte del mdp --> non metto terminazione 
     mdpBYTE[0] = (unsigned char) msg[20]; //primo byte 
