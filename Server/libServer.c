@@ -28,7 +28,10 @@ pthread_mutex_t semUDP = PTHREAD_MUTEX_INITIALIZER;
 
 int findUser(const char id [ID_LEN]){
     pthread_mutex_lock(&semNuser);
-    if(nUser == 0) return NOTFIND;
+    if(nUser == 0) {
+        pthread_mutex_unlock(&semNuser); 
+        return NOTFIND;
+    }
     pthread_mutex_lock (&semList); 
 
     
@@ -48,7 +51,7 @@ int findUser(const char id [ID_LEN]){
 
 }
 
-unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
+/*unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
 
     if(pox < 0) return NOTOK;
 
@@ -69,15 +72,18 @@ unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
 
     return OK;
 
-}
+}*/
 
 unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
-    int pox;
-    if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
+    // int pox;
+    // if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
     
- 
+    if(DEB) printf("Avvio funzione addUser \n");
+    //se gia presente non lo fa connettere
+    if(findUser(id) != NOTFIND) return NOTOK;   
 
     pthread_mutex_lock(&semNuser);
+
     //IL SERVER è PIENO 
     if(nUser >= MAX_CLIENT){
         pthread_mutex_unlock(&semNuser);
@@ -94,11 +100,13 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
 
     pthread_mutex_lock (&semList); 
 
+
     listUser[nUser] = newUser;
     nUser ++;
 
     pthread_mutex_unlock(&semNuser);
     pthread_mutex_unlock(&semList);
+
 
     return OK;
 }
@@ -300,6 +308,11 @@ unsigned int serverInit (unsigned int d){
         return NOTOK;
     }
 
+    pthread_mutex_unlock(&semList);
+    pthread_mutex_unlock(&semNuser);
+    pthread_mutex_unlock(&semUDP);
+
+
     //Creazione socket UDP
     udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if(udpSocket < 0) {
@@ -336,7 +349,7 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
         default:
             return NOTOK;
     }
-     
+    
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
 
     if(byteSent <= 0) return NOTOK;
@@ -536,6 +549,7 @@ void * pthreadConection(void * sockClient){
 
         if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
 
+        simpleTCPmsg(sClient, WELCO);
         
 
         
