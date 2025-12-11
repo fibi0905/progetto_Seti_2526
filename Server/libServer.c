@@ -321,7 +321,7 @@ void serverClose() {
     printf("Server close\n");
 }
 
-unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
+unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
     char msg [9];
     switch (tip){
         case WELCO: strcpy(msg, "WELCO+++\0");
@@ -336,10 +336,8 @@ unsigned int simpleUDPmsg (int sock, typSimpleMsg tip){
         default:
             return NOTOK;
     }
-   
-    pthread_mutex_lock(&semUDP);
+     
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
-    pthread_mutex_unlock(&semUDP);
 
     if(byteSent <= 0) return NOTOK;
 
@@ -392,7 +390,96 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
 
 }
 
-int regis(char *msg, int sock);
+unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Client){
+
+    //minima lunghezza:  REGIS (5) + (1) + ID(8) + (1) + PORT (4) +(1) + mdp (2) +"+++" (3) = 25
+    if(strlen(msg) < 25){
+        if(DEB) printf("REGIS: messaggio troppo corto\n");
+        return NOTOK;
+    }
+
+    if(strncmp(msg, "REGIS ", 6) != 0) {
+        if(DEB) printf("REGIS: formato non valido\n");
+        return NOTOK;
+    }
+
+    char id[ID_LEN];
+    char strPORT [5]; // 4 caratteri + /0
+    unsigned char mdpBYTE[2]; //i due byte della pass
+
+
+    strncpy(id, msg+6, 8); //sto copiando solo l'id --> REGIS (5) + (1) = 6 byte da saltare 
+    id[8] ='\0';
+
+    strncpy(strPORT, msg+15, 4); //sto copiando solo port -->  REGIS (5) + (1) + ID(8) + (1) = 15 byte da slatare
+    id[4] ='\0';
+
+    //estraggo solo i due byte del mdp --> non metto terminazione 
+    mdpBYTE[0] = (unsigned char) msg[20]; //primo byte 
+    mdpBYTE[1] = (unsigned char) msg[21]; //secondo byte 
+
+
+    // Converte la password da little-endian a unsigned int
+    unsigned int pass = mdpBYTE[0] | (mdpBYTE[1] << 8);
+    /*
+        << fa uno shift a sinistra di 8 bit
+        poi mette in or con il byte meno significativo 
+        
+    */
+
+    unsigned int portUDP = atoi(strPORT);
+
+    /*--------VALIDAZIONE DEI DATI--------*/
+
+    if(pass > 65535){
+        if(DEB) printf("REGIS: pass maggiore di 65535\n");
+        return NOTOK;
+    }
+
+    if(portUDP >= 9999){
+        if(DEB) printf("REGIS: UDP port maggiore o uguale a 9999\n");
+        return NOTOK;
+    }
+
+    /*
+        for(int i = 0; i < 8; i++) {
+            if(!isalnum(id[i])) {
+                if(DEB) printf("REGIS: ID contiene caratteri non alfanumerici\n");
+                simpleTCPmsg(sock, GOBYE);
+                return NOTOK;
+            }
+        }
+    
+    */
+
+    /*------------------------------------*/
+
+
+    //-----Costruzione l'indirizzo UDP client
+    struct sockaddr_in UDP_ADDR_Client;
+    UDP_ADDR_Client.sin_family =AF_INET;
+    UDP_ADDR_Client.sin_addr = TCP_ADDR_Client.sin_addr;
+    UDP_ADDR_Client.sin_port = portUDP;
+
+
+    if(DEB){
+        printf("REGIST: tentativo di registrazione su list\n");
+        printf("    IP: %s\n", inet_ntoa(UDP_ADDR_Client.sin_addr));
+        printf("    PORT: %u\n", portUDP);
+        printf("    ID: %s\n", id);
+    }
+
+    if(addUser(id, UDP_ADDR_Client, pass) == NOTOK){
+        if(DEB) printf("REGIS: impossibile aggiungere utente (server pieno o già esistente)\n");
+        return NOTOK;
+    }
+
+    
+
+    if(DEB) printf("REGIS: utente %s registrato con successo\n", id);
+    return OK;
+
+}
 
 /*-----------------------------------------------------*/
 
@@ -404,7 +491,21 @@ void * pthreadConection(void * sockClient){
     //dato la possibilià che vi siano più client 
     free(sockClient);
 
-    printf("Thread avviato: connesione con il client sock: %d\n", sClient);
+    printf("\n=== Thread avviato per socket %d ===\n", sClient);
+
+
+    struct sockaddr_in client_tcp_addr;
+    socklen_t addr_len = sizeof(client_tcp_addr);
+    if(getpeername(sClient, (struct sockaddr*)&client_tcp_addr, &addr_len) < 0) {
+        perror("getpeername");
+        close(sClient);
+        return NULL;
+    }
+
+    if(DEB){
+        printf("Thread si è connesso con: %s\n", inet_ntoa(client_tcp_addr.sin_addr));
+    } 
+
 
     char buff[MAX_TCP_MESAGGE];
 
@@ -420,49 +521,39 @@ void * pthreadConection(void * sockClient){
 
     type[5]='\0';
 
+    if(strcmp(type, "REGIS") == 0){
+        //registrazione
+        if(DEB) printf("Richiesta di Registrazione su socket %d", sClient);
 
-    if(strcmp(type, "REGIS")){
-        if(DEB) printf("registrazione nuovo utente\n");
-    }
-    
-    
-    else if (strcmp(type, "CONNE")){
-        if(DEB) printf("connesione utente\n");
-    }
-    
-    
-    else if (strcmp(type, "MESS?")){
-        if(DEB) printf("invio di messaggio\n");
-    }
-    
-    
-    else if (strcmp(type, "FRIE?")){
-        if(DEB) printf("nuova richiesta d'amicizia\n");
-    }
-    
-    else if (strcmp(type, "FLOO?")){
-        if(DEB) printf("invio di FLOO\n");
+        if(REGIST(buff, sClient, client_tcp_addr) == NOTOK){
+            simpleTCPmsg(sClient, GOBYE);
+            close(sClient);
+            return NULL;
+        }
+
+        if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
+
+        
+
+        
     }
 
-    else if (strcmp(type, "LIST?")){
-        if(DEB) printf("richiesta lista utenti\n");
-    }
 
-    else if (strcmp(type, "CONSU")){
-        if(DEB) printf("richiesta di consultazione fulussi\n");
-    }
+    else if(strcmp (type, "CONNE")){
+        //connesione ad utente 
+    }   
 
     else{
-        if(DEB) printf("richiesta sconosciuta, chiusura connesione\n");
-        close(sClient);
-        return NULL;
+        simpleTCPmsg(sClient, GOBYE);
+        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione");
     }
+
     
+   
 
 
     
-    
-
+    printf("=== Thread terminato per socket %d ===\n\n", sClient);
     close(sClient);
     return NULL;
 }

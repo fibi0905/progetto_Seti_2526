@@ -26,3 +26,44 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     return OK;
 
 }
+
+//------------------------------------------------------------------
+
+
+ if(strcmp(type, "REGIS")){
+        if(DEB) printf("registrazione nuovo utente\n");
+    }
+    
+    
+    else if (strcmp(type, "CONNE")){
+        if(DEB) printf("connesione utente\n");
+    }
+    
+    
+    else if (strcmp(type, "MESS?")){
+        if(DEB) printf("invio di messaggio\n");
+    }
+    
+    
+    else if (strcmp(type, "FRIE?")){
+        if(DEB) printf("nuova richiesta d'amicizia\n");
+    }
+    
+    else if (strcmp(type, "FLOO?")){
+        if(DEB) printf("invio di FLOO\n");
+    }
+
+    else if (strcmp(type, "LIST?")){
+        if(DEB) printf("richiesta lista utenti\n");
+    }
+
+    else if (strcmp(type, "CONSU")){
+        if(DEB) printf("richiesta di consultazione fulussi\n");
+    }
+
+    else{
+        if(DEB) printf("richiesta sconosciuta, chiusura connesione\n");
+        close(sClient);
+        return NULL;
+    }
+    
