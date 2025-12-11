@@ -61,6 +61,11 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
         if(DEB) printf("richiesta di consultazione fulussi\n");
     }
 
+    else if strcmp(type, "IQUIT"){
+        if(DEB) printf("richiesta di chisuura conneisone\n");
+    }
+
+
     else{
         if(DEB) printf("richiesta sconosciuta, chiusura connesione\n");
         close(sClient);

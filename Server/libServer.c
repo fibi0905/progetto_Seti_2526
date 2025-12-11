@@ -3,7 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <arpa/inet.h>
 
 /*-------Variabili & Semafori-------*/
 
@@ -28,7 +28,10 @@ pthread_mutex_t semUDP = PTHREAD_MUTEX_INITIALIZER;
 
 int findUser(const char id [ID_LEN]){
     pthread_mutex_lock(&semNuser);
-    if(nUser == 0) return NOTFIND;
+    if(nUser == 0) {
+        pthread_mutex_unlock(&semNuser); 
+        return NOTFIND;
+    }
     pthread_mutex_lock (&semList); 
 
     
@@ -48,7 +51,7 @@ int findUser(const char id [ID_LEN]){
 
 }
 
-unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
+/*unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
 
     if(pox < 0) return NOTOK;
 
@@ -69,15 +72,18 @@ unsigned int modUser (const unsigned int pox, struct sockaddr_in add){
 
     return OK;
 
-}
+}*/
 
 unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
-    int pox;
-    if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
+    // int pox;
+    // if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
     
- 
+    if(DEB) printf("Avvio funzione addUser \n");
+    //se gia presente non lo fa connettere
+    if(findUser(id) != NOTFIND) return NOTOK;   
 
     pthread_mutex_lock(&semNuser);
+
     //IL SERVER è PIENO 
     if(nUser >= MAX_CLIENT){
         pthread_mutex_unlock(&semNuser);
@@ -94,11 +100,13 @@ unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned in
 
     pthread_mutex_lock (&semList); 
 
+
     listUser[nUser] = newUser;
     nUser ++;
 
     pthread_mutex_unlock(&semNuser);
     pthread_mutex_unlock(&semList);
+
 
     return OK;
 }
@@ -300,6 +308,11 @@ unsigned int serverInit (unsigned int d){
         return NOTOK;
     }
 
+    pthread_mutex_unlock(&semList);
+    pthread_mutex_unlock(&semNuser);
+    pthread_mutex_unlock(&semUDP);
+
+
     //Creazione socket UDP
     udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if(udpSocket < 0) {
@@ -336,7 +349,7 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
         default:
             return NOTOK;
     }
-     
+    
     ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
 
     if(byteSent <= 0) return NOTOK;
@@ -412,7 +425,7 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
     id[8] ='\0';
 
     strncpy(strPORT, msg+15, 4); //sto copiando solo port -->  REGIS (5) + (1) + ID(8) + (1) = 15 byte da slatare
-    id[4] ='\0';
+    strPORT[4] ='\0';
 
     //estraggo solo i due byte del mdp --> non metto terminazione 
     mdpBYTE[0] = (unsigned char) msg[20]; //primo byte 
@@ -463,8 +476,9 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
 
 
     if(DEB){
+        char *client_ip = inet_ntoa(UDP_ADDR_Client.sin_addr);
         printf("REGIST: tentativo di registrazione su list\n");
-        printf("    IP: %s\n", inet_ntoa(UDP_ADDR_Client.sin_addr));
+        printf("    IP: %s\n", client_ip);
         printf("    PORT: %u\n", portUDP);
         printf("    ID: %s\n", id);
     }
@@ -503,7 +517,8 @@ void * pthreadConection(void * sockClient){
     }
 
     if(DEB){
-        printf("Thread si è connesso con: %s\n", inet_ntoa(client_tcp_addr.sin_addr));
+        char *client_ip = inet_ntoa(client_tcp_addr.sin_addr);
+        printf("Thread si è connesso con: %s\n", client_ip);
     } 
 
 
@@ -511,6 +526,7 @@ void * pthreadConection(void * sockClient){
 
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+        simpleTCPmsg(sClient, GOBYE);
         close(sClient);
         return NULL;
     }
@@ -533,6 +549,7 @@ void * pthreadConection(void * sockClient){
 
         if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
 
+        simpleTCPmsg(sClient, WELCO);
         
 
         
@@ -545,7 +562,7 @@ void * pthreadConection(void * sockClient){
 
     else{
         simpleTCPmsg(sClient, GOBYE);
-        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione");
+        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione", type);
     }
 
     
