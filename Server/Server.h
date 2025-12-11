@@ -24,6 +24,7 @@ enum typFlux{
 enum typSimpleMsg{
     WELCO,
     GOBYE,
+    HELLO, 
     FRIE_OK,
     FRIE_NOTOK,
     MESS_OK,
