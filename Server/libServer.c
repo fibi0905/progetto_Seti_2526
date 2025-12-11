@@ -350,7 +350,7 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
             return NOTOK;
     }
     
-    ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
+    ssize_t byteSent = write(sock, msg, strlen(msg)*sizeof(char));  
 
     if(byteSent <= 0) return NOTOK;
 
