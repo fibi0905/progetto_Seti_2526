@@ -283,6 +283,18 @@ unsigned int okMSG(const char * msg, size_t dimMsg){
     return OK;
 }
 
+
+unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]){
+    // Converte la password da little-endian a unsigned int
+    return mdpBYTE[0] | (mdpBYTE[1] << 8);
+    /*
+        << fa uno shift a sinistra di 8 bit
+        poi mette in or con il byte meno significativo 
+        
+    */
+}
+
+
 /*--------------------------------------------------------------*/
 
 
@@ -336,21 +348,41 @@ void serverClose() {
 
 unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
     char msg [9];
-    switch (tip){
-        case WELCO: strcpy(msg, "WELCO+++\0");
-        case GOBYE: strcpy(msg, "GOBYE+++\0");
-        case FRIE_OK: strcpy(msg, "FRIE>+++\0");
-        case FRIE_NOTOK: strcpy(msg, "FRIE<+++\0");
-        case MESS_OK: strcpy(msg, "MESS>+++\0");
-        case MESS_NOTOK: strcpy(msg, "MESS<+++\0");
-        case FLOO_OK: strcpy(msg, "FLOO>+++\0");
-        case ACKRF: strcpy(msg, "ACKRF+++\0");
-        case NOCON: strcpy(msg, "NOCON+++\0");
+ switch (tip){
+        case WELCO: 
+            strcpy(msg, "WELCO+++\0");
+            break; 
+        case GOBYE: 
+            strcpy(msg, "GOBYE+++\0");
+            break; 
+        case HELLO: 
+            strcpy(msg, "HELLO+++\0");
+            break; 
+        case FRIE_OK: 
+            strcpy(msg, "FRIE>+++\0");
+            break; 
+        case FRIE_NOTOK: 
+            strcpy(msg, "FRIE<+++\0");
+            break; 
+        case MESS_OK: 
+            strcpy(msg, "MESS>+++\0");
+            break; 
+        case MESS_NOTOK: 
+            strcpy(msg, "MESS<+++\0");
+            break; 
+        case FLOO_OK: 
+            strcpy(msg, "FLOO>+++\0");
+            break; 
+        case ACKRF: 
+            strcpy(msg, "ACKRF+++\0");
+            break; 
+        case NOCON: 
+            strcpy(msg, "NOCON+++\0");
+            break; 
         default:
-            return NOTOK;
+            return NOTOK; // Questo è corretto per i tipi non riconosciuti
     }
-    
-    ssize_t byteSent = send(sock, msg, strlen(msg), 0);  
+    ssize_t byteSent = write(sock, msg, strlen(msg)*sizeof(char));  
 
     if(byteSent <= 0) return NOTOK;
 
@@ -421,8 +453,8 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
     unsigned char mdpBYTE[2]; //i due byte della pass
 
 
-    strncpy(id, msg+6, 8); //sto copiando solo l'id --> REGIS (5) + (1) = 6 byte da saltare 
-    id[8] ='\0';
+    strncpy(id, msg+6, (ID_LEN-1)); //sto copiando solo l'id --> REGIS (5) + (1) = 6 byte da saltare 
+    id[(ID_LEN-1)] ='\0';
 
     strncpy(strPORT, msg+15, 4); //sto copiando solo port -->  REGIS (5) + (1) + ID(8) + (1) = 15 byte da slatare
     strPORT[4] ='\0';
@@ -433,12 +465,8 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
 
 
     // Converte la password da little-endian a unsigned int
-    unsigned int pass = mdpBYTE[0] | (mdpBYTE[1] << 8);
-    /*
-        << fa uno shift a sinistra di 8 bit
-        poi mette in or con il byte meno significativo 
-        
-    */
+    unsigned int pass = litEndianTOusingedInt(mdpBYTE);
+    
 
     unsigned int portUDP = atoi(strPORT);
 
@@ -495,6 +523,70 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
 
 }
 
+unsigned int CONNECT(const char *msg){
+
+    //conferma solo se l'utente esisete già e se la pass è corretta
+
+    //controlla che ci sia almeno un utente
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 0){
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    }
+    pthread_mutex_unlock(&semNuser);
+
+
+    /*
+        lunghezza minima:
+            CONNE (5) + (1) + ID(8) + (1) + PASS (2) + "+++" (3) = 20 byte
+    
+    */
+    if(strlen(msg) < 20){
+        if(DEB) printf("CONNECT: messaggio troppo corto\n");
+        return NOTOK;
+    }
+
+    if(strncmp(msg, "CONNE ", 6) != 0) {
+        if(DEB) printf("CONNECT: formato non valido\n");
+        return NOTOK;
+    }
+
+    
+
+    char id [ID_LEN];
+    unsigned char mdpBYTE[2];
+
+    strncpy(id, msg+6, (ID_LEN-1));
+    id[(ID_LEN-1)] = '\0';
+
+    unsigned int pox;
+    if((pox = findUser(id)) == NOTFIND){
+        if(DEB) printf("CONNECT: utente non trovato\n");
+        return NOTOK;
+    }
+
+
+    mdpBYTE[0] = (unsigned char) msg[15];
+    mdpBYTE[1] = (unsigned char) msg[16];
+
+    unsigned int pass = litEndianTOusingedInt(mdpBYTE);
+
+    pthread_mutex_lock(&semList);
+
+    if(listUser[pox].pass != pass){
+        if(DEB) printf("CONNECT: password non corretta\n   Pass in database: %u\n   Pass in avente: %u", listUser[pox].pass, pass);
+        pthread_mutex_unlock(&semList);
+        return NOTOK;
+    }
+
+    pthread_mutex_unlock(&semList);
+
+    if(DEB) printf("CONNECT: utente %s connesso con successo\n", id);
+
+    return OK;
+
+}
+
 /*-----------------------------------------------------*/
 
 
@@ -539,7 +631,7 @@ void * pthreadConection(void * sockClient){
 
     if(strcmp(type, "REGIS") == 0){
         //registrazione
-        if(DEB) printf("Richiesta di Registrazione su socket %d", sClient);
+        if(DEB) printf("Richiesta di Registrazione su socket %d\n", sClient);
 
         if(REGIST(buff, sClient, client_tcp_addr) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
@@ -552,17 +644,32 @@ void * pthreadConection(void * sockClient){
         simpleTCPmsg(sClient, WELCO);
         
 
+        //Funzione per utenti gia connessi  
         
     }
 
 
-    else if(strcmp (type, "CONNE")){
+    else if(strcmp (type, "CONNE") == 0){
         //connesione ad utente 
+        if(DEB) printf("Richiesta di Connesione su socket %d\n", sClient);
+        
+        if(CONNECT(buff) == NOTOK){
+            simpleTCPmsg(sClient, GOBYE);
+            close(sClient);
+            return NULL;
+        }
+
+        if(DEB) printf("Connesione avvenuta con successo %d\n", sClient);
+
+        simpleTCPmsg(sClient, HELLO);
+
+        //Funzione per utenti gia connessi  
+
     }   
 
     else{
         simpleTCPmsg(sClient, GOBYE);
-        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione", type);
+        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
     }
 
     
