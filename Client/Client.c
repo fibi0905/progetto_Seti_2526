@@ -2,6 +2,8 @@
     Client.c
 
     main del client
+
+    per compilare gcc -Wall Client.c libClient.c -o client
 */
 
 #include "Client.h"
@@ -34,11 +36,15 @@ int main(){
 
     while(true){
         stampaMenu();
-        scanf("%d", &sceltaUtente);
+        scanf("%hhd", &sceltaUtente);
         switch (sceltaUtente)
         {
         case 1 :
-            newClient();
+            err = newClient();
+            if(err != OK)
+                printf("registrazione fallita\n");
+            else
+                printf("registrazione riuscita\n");
             break;
         
         default:

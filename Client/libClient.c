@@ -10,7 +10,9 @@
 #define ID_STD "Ferraro"
 
 // variabili globali
-user utente; // descrittore utente
+user utente;  // descrittore utente
+int descrTCP; // descrittore socekt TCP
+int descrUDP; // descrittore socket UDP
 
 // gestisce recupero creadenziali, può recuperarle da file, o da riga terminale.
 // fare in modo che possa salvare le credenziali l'utente
@@ -28,7 +30,7 @@ int recuperoCredenziali(bool test)
     if (test)
     {
         strcpy(utente.id, ID_STD);
-        strcpy(utente.pw, PASSWORD_STD);
+        utente.mdp = PASSWORD_STD;
 
         // debug
         if (DEBUG)
@@ -38,6 +40,8 @@ int recuperoCredenziali(bool test)
 
         return OK;
     }
+
+    return NOTOK;
     // TODO------------------------------------------------------------------------------------------------------
 }
 
@@ -45,13 +49,15 @@ int recuperoCredenziali(bool test)
 
 int startup()
 {
+    // inizializzazione descrittori socket
+    descrTCP = NOTOK;
+    descrUDP = NOTOK;
+
     // debug
     if (DEBUG)
     {
         printf("Client: Inizio creazione socket TCP\n");
     }
-
-    int vetDesc[2] = {-1, -1}; // usato per memorizzare i descrittori dei client, inizializzato a -1
 
     // creazione socket tcp per comunicazione con server
     struct sockaddr_in socketTCP;                     // allocazione socket
@@ -59,7 +65,7 @@ int startup()
     socketTCP.sin_port = htons(PORTA_SERVER);         // porta aperta
     inet_aton(INDIRIZZO_SERVER, &socketTCP.sin_addr); // indirizzo server
 
-    int descrTCP = socket(PF_INET, SOCK_STREAM, 0); // creazione socket TCP ipv4
+    descrTCP = socket(PF_INET, SOCK_STREAM, 0); // creazione socket TCP ipv4
 
     // debug
     if (DEBUG)
@@ -69,8 +75,8 @@ int startup()
 
     int r = connect(descrTCP, (struct sockaddr *)&socketTCP, sizeof(struct sockaddr_in)); // creazione connessione
 
-    if (r == -1)
-    { // controllo se connessione avvenuta con successo
+    if (r == -1) // controllo se connessione avvenuta con successo
+    {
         // Connessione fallita
 
         // debug
@@ -79,9 +85,7 @@ int startup()
             printf("Client: connessione fallita\n");
         }
 
-        vetDesc[0] = descrTCP;
-        vetDesc[1] = NULL;
-        shutdown(vetDesc);
+        client_shutdown();
 
         return NOTOK;
         // TODO--------------------------------------------------------------------------------------------------------------------------
@@ -97,23 +101,56 @@ int startup()
     // debug
     if (DEBUG)
     {
-        printf("Client: creazioen socket UDP\n");
+        printf("Client: creazione socket UDP\n");
     }
 
     // creazione socket udp per comunicazione con server (gestione notifiche)
-    struct sockaddr_in socketUDP;                     // allocazione socket
-    socketUDP.sin_family = AF_INET;                   // socket ipv4
-    socketUDP.sin_port = htons(PORTA_SERVER);         // porta aperta
-    inet_aton(INDIRIZZO_SERVER, &socketUDP.sin_addr); // indirizzo server
+    struct sockaddr_in socketUDP;                 // allocazione socket
+    socketUDP.sin_family = AF_INET;               // socket ipv4
+    socketUDP.sin_port = htons(PORTA_UDP_CLIENT); // porta aperta
+    inet_aton(INADDR_ANY, &socketUDP.sin_addr);   // indirizzo in ascolto (tutti)
 
-    int descrUDP = socket(PF_INET, SOCK_DGRAM, 0); // creazione socket udp ipv4
+    descrUDP = socket(PF_INET, SOCK_DGRAM, 0); // creazione socket udp ipv4
+
     // niente connect dato che connessione non affidabile
 
     // debug
     if (DEBUG)
     {
-        printf("Client: creazione socket udp riuscita\n");
+        printf("Client: creazione socket udp riuscito\n");
     }
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: bind del socket udp\n");
+    }
+
+    r = bind(descrUDP, (struct sockaddr*) &socketUDP, sizeof(struct sockaddr_in)); // bind dato che dobbiamo ricevere notifiche
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: bind del socket udp riuscio\n");
+    }
+
+    if (r == -1) // controllo bind avvenuta con successo
+    {
+        // bind fallita
+
+        // debug
+        if (DEBUG)
+        {
+            printf("Client: bind del socket udp fallito\n");
+        }
+
+        return NOTOK;
+        // TODO----------------------------------------------------------------------------------
+    }
+
+    // bind riuscita
+
+    utente.port = PORTA_UDP_CLIENT; // riempo struttura user con porta udp
 
     return OK;
 }
@@ -128,23 +165,126 @@ int newClient()
         printf("Client: Inizio registrazione\n");
     }
 
-    if (recuperoCredenziali(true) != OK){
-        //errore
-        //TODO----------------------------------------------------------------------------------------------
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: recupero credenziali\n");
     }
 
-    msg messaggio;
-    strcpy(messaggio.id, utente.id);
-    strcpy()
+    if (recuperoCredenziali(true) != OK)
+    {
+        // errore
+
+        // debug
+        if (DEBUG)
+        {
+            printf("Client: recupero credenziali fallito\n");
+        }
+
+        return NOTOK;
+        // TODO----------------------------------------------------------------------------------------------
+    }
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: recupero credenziali riuscito\n");
+    }
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: invio messaggio REGIS\n");
+    }
+
+    // creo buffer e riempo con messaggio finale
+    char msg[BUFSIZ];
+    snprintf(msg, sizeof(msg), "REGIS %s %d %d+++", utente.id, utente.port, utente.mdp);
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: messaggio:\"%s\"\n", msg);
+    }
+
+    if (write(descrTCP, msg, strlen(msg)) <= 0) // controllo numero byte scritti
+    {
+        // byte scritto minori di 1, errore
+
+        // debug
+        if (DEBUG)
+        {
+            printf("Client: invio messsaggio REGIS fallito\n");
+        }
+
+        return NOTOK;
+        // TODO--------------------------------------
+    }
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: invio messsaggio REGIS riuscito\n");
+    }
+
+    // byte scritti sufficienti
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: lettura risposta server\n");
+    }
+
+    if (read(descrTCP, msg, sizeof(char) * BUFSIZ) <= 0) // lettura risposta server e controllo numero di byte letti
+    {
+        // byte letti insufficienti
+
+        // debug
+        if (DEBUG)
+        {
+            printf("Client: lettura risposta server fallita\n");
+            printf("Client: messaggio server:\"%s\"", msg);
+        }
+
+        return NOTOK;
+
+        // TODO--------------------------------------------------------------------------------------------------
+    }
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: lettura risposta server riuscito\n");
+        printf("Client: messaggio server:\"%s\"", msg);
+    }
+
+    if (strcmp(msg, "WELCO+++")) // se accetta registrazione
+    {
+        // debug
+        if (DEBUG)
+        {
+            printf("Client: registrazione avvenuta con successo\n");
+        }
+
+        return OK;
+    }
+
+    // registrazione rifiutata
+
+    // debug
+    if (DEBUG)
+    {
+        printf("Client: registrazione fallita\n");
+    }
+
+    return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void shutdown(int *desc)
+void client_shutdown()
 {
-    // TODO---------------------------------------------------------------------------------------------------------
-    if (desc[0] != -1)
-        close(desc[0]); // chiusura socket udp ipv4
-    if (desc[1] != -1)
-        close(desc[1]); // chiusura socket tcp ipv4
+    close(descrTCP);
+    close(descrUDP);
+    // TODOOOOOOOO-----------------------------------------------------------
 }

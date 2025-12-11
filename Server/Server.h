@@ -1,15 +1,10 @@
-#include <netinet/in.h>
+#pragma once
+
 #include <pthread.h>
-#include <stdlib.h>
 #include "../src/utility.h"
 
 #define MAX_CLIENT 100
-#define ID_LEN 9
 #define MAX_LEN 201
-
-#define OK 1
-#define NOTOK 0
-#define NOTFIND -1
 
 
 typedef struct user user;

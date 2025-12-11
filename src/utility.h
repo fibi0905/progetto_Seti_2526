@@ -1,7 +1,17 @@
-#define OK 1
-#define NOTOK 0
-#define NOTFIND -1
+#pragma once
 
+//librerie comuni
+#include <netinet/in.h>
+#include <stdlib.h>
+
+// codici controllo errori
+#define OK 0
+#define NOTOK -1
+#define NOTFIND -2
+
+#define ID_LEN 9
+
+#define DEBUG true  //controllo modalita verbose
 
 //sarebbe 218 il massimo, visto che il messaggio più lungo 
 //è l'invio di un messaggio dato che:
@@ -10,3 +20,4 @@
 #define MAX_LEN 201
 
 #define SERVER_PORT 8080
+#define INDIRIZZO_SERVER "127.0.0.1"
