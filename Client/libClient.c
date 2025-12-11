@@ -6,37 +6,59 @@
 */
 #include "Client.h"
 
-#define PASSWORD_STD 0
-#define ID_STD "Ferraro"
+//----------------VARIABILI GLOBALI-------------------------------------------------------------------------------------------------------------------------------------
+user utente;         // descrittore utente
+int descrTCP;        // descrittore socekt TCP
+int descrUDP;        // descrittore socket UDP
+bool seDebugAttivo;  //attiva modalità verbose
+bool seCredenzialiDefault ;  //attiva le credenziali di default per i test
 
-// variabili globali
-user utente;  // descrittore utente
-int descrTCP; // descrittore socekt TCP
-int descrUDP; // descrittore socket UDP
+//-------------------INIZIO FUNZIONI------------------------------------------------------------------------------------------------------------------------------------
+
+int initialization(const int argc, const char* args[])
+{
+     for (unsigned int i = 1; i < argc; i++)
+    {
+        if( strcmp(args[i], "-d") == 0)
+            set_debug(true);   //attivazione modalità verbose
+        if( strcmp(args[i], "-c") == 0)
+            set_credenzialiDefault(true);   //atttivazione uso credenziali predefinite
+        
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void set_debug(const bool b)
+{
+    seDebugAttivo = b;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void set_credenzialiDefault(bool b)
+{
+    seCredenzialiDefault = b;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // gestisce recupero creadenziali, può recuperarle da file, o da riga terminale.
 // fare in modo che possa salvare le credenziali l'utente
 // il parametro test se vero procedere con le credenziali fittizie
 //
 // per il momento solo con test true
-int recuperoCredenziali(bool test)
+//NON TERMINATA
+int recuperoCredenziali()
 {
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: inizio login\n");
-    }
+    debug("Client: inizio login\n");    // debug
 
-    if (test)
+    if (seCredenzialiDefault)
     {
         strcpy(utente.id, ID_STD);
         utente.mdp = PASSWORD_STD;
 
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: sarà effettuto un login con credenziali fittizione std\n");
-        }
+        debug("Client: sarà effettuto un login con credenziali fittizione std\n");  // debug
 
         return OK;
     }
@@ -47,31 +69,57 @@ int recuperoCredenziali(bool test)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void svuota_buffer(const int socket_fd)
+{
+    char trash[256]; // Variabile spazzatura
+    int n;
+
+    // MSG_DONTWAIT: Legge se c'è roba. Se è vuoto, NON si blocca e ritorna -1.
+    while ((n = recv(socket_fd, trash, sizeof(trash), MSG_DONTWAIT)) > 0){}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void debug(const char *format, ...)
+{
+    if (seDebugAttivo)
+    {
+        va_list args;
+        
+        // Inizializza la lista degli argomenti variabili
+        va_start(args, format);
+        
+        // Stampa usando vprintf (v = variadic)
+        vprintf(format, args);
+        
+        // Pulisce la memoria della lista
+        va_end(args);
+
+        fflush(stdout); //per essere sicuri di aver scritto tutto
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//NON TERMINATA
 int startup()
 {
-    // inizializzazione descrittori socket
+    // inizializzazione variabili globali
     descrTCP = NOTOK;
     descrUDP = NOTOK;
+    seDebugAttivo = false;
+    seCredenzialiDefault = false;
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: Inizio creazione socket TCP\n");
-    }
+    debug("Client: Inizio creazione socket TCP\n"); // debug
 
     // creazione socket tcp per comunicazione con server
     struct sockaddr_in socketTCP;                     // allocazione socket
     socketTCP.sin_family = AF_INET;                   // socket ipv4
-    socketTCP.sin_port = htons(PORTA_SERVER);         // porta aperta
+    socketTCP.sin_port = htons(SERVER_PORT);          // porta aperta
     inet_aton(INDIRIZZO_SERVER, &socketTCP.sin_addr); // indirizzo server
 
     descrTCP = socket(PF_INET, SOCK_STREAM, 0); // creazione socket TCP ipv4
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: tentativo connessione server\n");
-    }
+    debug("Client: tentativo connessione server\n");    // debug
 
     int r = connect(descrTCP, (struct sockaddr *)&socketTCP, sizeof(struct sockaddr_in)); // creazione connessione
 
@@ -79,11 +127,7 @@ int startup()
     {
         // Connessione fallita
 
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: connessione fallita\n");
-        }
+        debug("Client: connessione fallita\n");     // debug
 
         client_shutdown();
 
@@ -92,63 +136,39 @@ int startup()
     }
     // connessione riuscita
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: connessione riuscita\n");
-    }
+    debug("Client: connessione riuscita\n");    // debug
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: creazione socket UDP\n");
-    }
+    debug("Client: creazione socket UDP\n");    // debug
 
     // creazione socket udp per comunicazione con server (gestione notifiche)
-    struct sockaddr_in socketUDP;                 // allocazione socket
-    socketUDP.sin_family = AF_INET;               // socket ipv4
-    socketUDP.sin_port = htons(PORTA_UDP_CLIENT); // porta aperta
-    inet_aton(INADDR_ANY, &socketUDP.sin_addr);   // indirizzo in ascolto (tutti)
+    struct sockaddr_in socketUDP;                  // allocazione socket
+    socketUDP.sin_family = AF_INET;                // socket ipv4
+    socketUDP.sin_port = htons(PORTA_UDP_CLIENT);  // porta aperta
+    socketUDP.sin_addr.s_addr = htons(INADDR_ANY); // indirizzo in ascolto (tutti)
 
     descrUDP = socket(PF_INET, SOCK_DGRAM, 0); // creazione socket udp ipv4
 
     // niente connect dato che connessione non affidabile
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: creazione socket udp riuscito\n");
-    }
+    debug("Client: creazione socket udp riuscito\n");   // debug
+    
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: bind del socket udp\n");
-    }
-
-    r = bind(descrUDP, (struct sockaddr*) &socketUDP, sizeof(struct sockaddr_in)); // bind dato che dobbiamo ricevere notifiche
-
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: bind del socket udp riuscio\n");
-    }
+    debug("Client: bind del socket udp\n");     // debug
+    
+    r = bind(descrUDP, (struct sockaddr *)&socketUDP, sizeof(struct sockaddr_in)); // bind dato che dobbiamo ricevere notifiche
 
     if (r == -1) // controllo bind avvenuta con successo
     {
         // bind fallita
-
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: bind del socket udp fallito\n");
-        }
-
+        
+        debug("Client: bind del socket udp fallito\n"); // debug
+        
         return NOTOK;
         // TODO----------------------------------------------------------------------------------
     }
 
     // bind riuscita
+    debug("Client: bind del socket udp riuscio\n");     // debug
 
     utente.port = PORTA_UDP_CLIENT; // riempo struttura user con porta udp
 
@@ -156,132 +176,119 @@ int startup()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//NON TERMINATA
 int newClient()
 {
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: Inizio registrazione\n");
-    }
+    debug("Client: Inizio registrazione\n");    // debug
+    
+    debug("Client: recupero credenziali\n");    // debug
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: recupero credenziali\n");
-    }
-
-    if (recuperoCredenziali(true) != OK)
+    if (recuperoCredenziali() != OK)
     {
         // errore
 
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: recupero credenziali fallito\n");
-        }
+        debug("Client: recupero credenziali fallito\n");    // debug
 
         return NOTOK;
         // TODO----------------------------------------------------------------------------------------------
     }
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: recupero credenziali riuscito\n");
-    }
+    debug("Client: recupero credenziali riuscito\n");   // debug
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: invio messaggio REGIS\n");
-    }
+    debug("Client: invio messaggio REGIS\n");   // debug
+    
 
     // creo buffer e riempo con messaggio finale
     char msg[BUFSIZ];
     snprintf(msg, sizeof(msg), "REGIS %s %d %d+++", utente.id, utente.port, utente.mdp);
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: messaggio:\"%s\"\n", msg);
-    }
+    debug("Client: messaggio:\"%s\"\n", msg);   // debug
 
-    if (write(descrTCP, msg, strlen(msg)) <= 0) // controllo numero byte scritti
+    int nByte = 0; // contatore byte letti/scritti
+
+    nByte = write(descrTCP, msg, strlen(msg));
+    if (nByte <= 0) // controllo numero byte scritti
     {
         // byte scritto minori di 1, errore
 
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: invio messsaggio REGIS fallito\n");
-        }
+        debug("Client: invio messsaggio REGIS fallito, scritti %d\n", nByte);   // debug
+        
 
         return NOTOK;
         // TODO--------------------------------------
     }
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: invio messsaggio REGIS riuscito\n");
-    }
+    debug("Client: invio messsaggio REGIS riuscito, inviati %d\n", nByte);  // debug    
 
     // byte scritti sufficienti
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: lettura risposta server\n");
-    }
+    debug("Client: lettura risposta server\n"); // debug
 
-    if (read(descrTCP, msg, sizeof(char) * BUFSIZ) <= 0) // lettura risposta server e controllo numero di byte letti
+    // lettura risposta server e controllo numero di byte letti
+    nByte = read(descrTCP, msg, sizeof(char) * 8);
+    if (nByte > 8)
     {
         // byte letti insufficienti
+        debug("Client: lettura risposta server fallita, letti %d\n", nByte);    // debug
+        debug("Client: messaggio server(non messo fine stringa, potrebbero esserci dati residui):\"%s\"\n", msg);  // debug
 
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: lettura risposta server fallita\n");
-            printf("Client: messaggio server:\"%s\"", msg);
-        }
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n");   // debug
 
         return NOTOK;
 
         // TODO--------------------------------------------------------------------------------------------------
     }
+    msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
-    // debug
-    if (DEBUG)
-    {
-        printf("Client: lettura risposta server riuscito\n");
-        printf("Client: messaggio server:\"%s\"", msg);
-    }
+    debug("Client: lettura risposta server riuscito, letti %d\n", nByte);   // debug
+    debug("Client: messaggio server:\"%s\"\n", msg);    // debug
 
-    if (strcmp(msg, "WELCO+++")) // se accetta registrazione
+    if (strcmp(msg, "WELCO+++") == 0) // se accetta registrazione
     {
-        // debug
-        if (DEBUG)
-        {
-            printf("Client: registrazione avvenuta con successo\n");
-        }
+        debug("Client: registrazione avvenuta con successo\n");  // debug
 
         return OK;
     }
-
-    // registrazione rifiutata
-
-    // debug
-    if (DEBUG)
+    else if (strcmp(msg, "GOBYE+++") == 0)
     {
-        printf("Client: registrazione fallita\n");
+        // registrazione rifiutata
+
+        debug("Client: registrazione rifiutata con successo\n");   // debug
+
+        return NOTOK;
     }
+
+    // registrazione fallita
+
+    debug("Client: registrazione fallita\n");  // debug
+
+    svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+    debug("Client: buffer svuotato correttamente\n");  // debug
 
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//NON TERMINATA
+int login()
+{
+    debug("inizio login");
 
+    if( recuperoCredenziali()!= OK)   //per avere dentro struttura user i dati corretti
+    {
+        debug("Client: recupero credenziali fallito");
+
+        return NOTOK;
+
+        //TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    }
+    return OK;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//NON TERMINATA
 void client_shutdown()
 {
     close(descrTCP);

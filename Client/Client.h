@@ -5,7 +5,9 @@
 */
 #pragma once
 
-#include "src/utility.h"
+
+//LIBRERIE DEDICATE ---------------------------------------------------------------------------------
+#include "../src/utility.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -13,20 +15,33 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <stdarg.h>
 
+//TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;
 
+//INIZIO DEFINE ------------------------------------------------------------------------------------
 #define PORTA_UDP_CLIENT 15123  //porta udp ricezione client
+#define DEBUG false // controllo modalita verbose predefinita
 
-// stutture client--------------------------
+//CREDENZIALI PREDEFINITE --------------------------------------------------------------------------
+#define PASSWORD_STD 0
+#define ID_STD "Ferraro"
+
+// STRUTTURA USER ----------------------------------------------------------------------------------
 struct user
 {
-    char id[ID_LEN];    
+    char id[ID_LEN];    //max 8 caratteri
 
-    unsigned int mdp; // da controllare che sia tra 0 e 65535
+    unsigned int mdp;   // da controllare che sia tra 0 e 65535
 
-    unsigned int port;
+    unsigned int port;  //porta udp
 };
+
+//FUNZIONI ESPOSTE ---------------------------------------------------------------------------------
+
+//inizializza tutte le impostazioni del client; prende come parametri argc (numero parametri) e args(array di stringhe con opzioni)
+int initialization(const int, const char**);
 
 // Gestisce l'avvio del client.
 // sono presenti due socket uno per la comunicazione con il serve tcp, e uno per la gestione dei flussi UDP
@@ -37,10 +52,25 @@ int startup();
 // ritorn OK o NOTOK
 int newClient();
 
+//effettua l'accesso con le credenziali salvate se disponibili, altrimenti le richiede all'utente
+int login();
+
 // Gestisce spegnimento del client, il parametro desc è un vettore di grandezza 2 con in pos 0 il descrittore del socket udo
 // e in pos 1 il descrittore del socket tcp. Dato che non è possibile sapere se i socket da chiudere sarà solo il socket tcp, solo udp o entrambi
 // sarà necessario controllare che non siano -1
 void client_shutdown();
+
+// setter della variabile globale debug che gestisce modalita verbose
+void set_debug(const bool);
+
+// setter della variabile globale che gestisce l'uso delle credenziali predefinite standard
+void set_credenzialiDefault(const bool);
+
+//funzione di stampa per debug
+void debug(const char*, ...);
+
+
+//NOTE FINALI -7777777-7-7-7--7-7-7-7--7
 
 // cose da aggiungere
 // Se il client non è registrato dovrà registrarsi, se già registrato procederà ad accedere (prevedere salvataggio credenziali facoltativo senza criptazione per semplicità)

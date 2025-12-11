@@ -1,0 +1,16 @@
+# --- File Oggetto e Compilati Standard ---
+*.o
+*.obj
+*.out
+*.exe
+
+# --- File di Sistema e Editor ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- eseguibili ---
+client
+server
