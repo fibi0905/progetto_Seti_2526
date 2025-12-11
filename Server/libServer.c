@@ -3,7 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <arpa/inet.h>
 
 /*-------Variabili & Semafori-------*/
 
@@ -463,8 +463,9 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
 
 
     if(DEB){
+        char *client_ip = inet_ntoa(UDP_ADDR_Client.sin_addr);
         printf("REGIST: tentativo di registrazione su list\n");
-        printf("    IP: %s\n", inet_ntoa(UDP_ADDR_Client.sin_addr));
+        printf("    IP: %s\n", client_ip);
         printf("    PORT: %u\n", portUDP);
         printf("    ID: %s\n", id);
     }
@@ -503,7 +504,8 @@ void * pthreadConection(void * sockClient){
     }
 
     if(DEB){
-        printf("Thread si è connesso con: %s\n", inet_ntoa(client_tcp_addr.sin_addr));
+        char *client_ip = inet_ntoa(client_tcp_addr.sin_addr);
+        printf("Thread si è connesso con: %s\n", client_ip);
     } 
 
 
@@ -511,6 +513,7 @@ void * pthreadConection(void * sockClient){
 
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+        simpleTCPmsg(sClient, GOBYE);
         close(sClient);
         return NULL;
     }
@@ -545,7 +548,7 @@ void * pthreadConection(void * sockClient){
 
     else{
         simpleTCPmsg(sClient, GOBYE);
-        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione");
+        if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione", type);
     }
 
     
