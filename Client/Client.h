@@ -21,10 +21,10 @@
 typedef struct user user;
 
 //INIZIO DEFINE ------------------------------------------------------------------------------------
-#define PORTA_UDP_CLIENT 15123  //porta udp ricezione client
+#define PORTA_UDP_CLIENT 20123  //porta udp ricezione client
 #define DEBUG false // controllo modalita verbose predefinita
-
-//CREDENZIALI PREDEFINITE --------------------------------------------------------------------------
+#define DIMBUF 256   //dimensione buffer
+//credenziali predefinite --------------------------------------------------------------------------
 #define PASSWORD_STD 0
 #define ID_STD "Ferraro"
 
@@ -54,6 +54,9 @@ int newClient();
 
 //effettua l'accesso con le credenziali salvate se disponibili, altrimenti le richiede all'utente
 int login();
+
+//effettua una richiesta d'amicizia ad un altro client, riceve come parametro id del client a cui sarà inviata la richiesta
+int friend_request(int);
 
 // Gestisce spegnimento del client, il parametro desc è un vettore di grandezza 2 con in pos 0 il descrittore del socket udo
 // e in pos 1 il descrittore del socket tcp. Dato che non è possibile sapere se i socket da chiudere sarà solo il socket tcp, solo udp o entrambi
