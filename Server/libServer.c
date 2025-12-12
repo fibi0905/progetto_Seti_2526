@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <ctype.h>
+
 
 /*-------Variabili & Semafori-------*/
 
@@ -74,7 +76,7 @@ int findUser(const char id [ID_LEN]){
 
 }*/
 
-unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass, int sock ){
+unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass){
     // int pox;
     // if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
     
@@ -404,31 +406,41 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     
     // Inizializza il buffer
     memset(buff, 0, dimBuff);
+
+    
     
     // Legge byte per byte fino a trovare "+++"
     while (msgTotlen < dimBuff - 1) {
         ssize_t bytesRead = read(sock, &tempBuf, 1);
+        //if(DEB) printf("byte letto: %c\n", tempBuf);
         
         if (bytesRead <= 0) {
             // Errore o connessione chiusa
             return NOTOK;
         }
+
         
-        buff[msgTotlen] = tempBuf;
-        msgTotlen++;
         
-        // Controlla se abbiamo trovato la sequenza terminatrice "+++"
-        if (tempBuf == '+') {
-            plus++;
-            if (plus == 3) {
-                break; 
-            }
-        } else {
-            plus = 0; 
+        if(isalnum(tempBuf) || tempBuf == '+' || tempBuf == ' ' || tempBuf == '?' || tempBuf == '<' || tempBuf == '>'){
+            //if(DEB) printf("byte scritto: %c\n", tempBuf);
+
+            buff[msgTotlen] = tempBuf;
+            msgTotlen++;
+            
+            // Controlla se abbiamo trovato la sequenza terminatrice "+++"
+            if (tempBuf == '+') {
+                plus++;
+                if (plus == 3) {
+                    break; 
+                }
+            } else {
+                plus = 0; 
         }
+        }
+       
     }
 
-    if((msgTotlen-3) <8) return NOTOK;
+    if(msgTotlen <8) return NOTOK;
 
     buff[msgTotlen] ='\0';
     return OK;
@@ -677,12 +689,18 @@ void * pthreadConection(void * sockClient){
     }
 
     while (1){
+
+        if(DEB) printf("BUFF: %s ---\n", buff);
+
+
         if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
             if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
             pthread_exit(NULL);
         }
+
+       // if(DEB) printf("Thread [ socket: %d ] ha ricevuto:  %s\n", sClient, buff);
 
         strncpy(type, buff, 5);
 
@@ -710,7 +728,7 @@ void * pthreadConection(void * sockClient){
 
         }
 
-        else if(strcmp(type, "LSIT?") == 0){
+        else if(strcmp(type, "LIST?") == 0){
             if(DEB) printf("Richiesta di lista utenti\n");
 
         }
@@ -718,6 +736,12 @@ void * pthreadConection(void * sockClient){
         else if(strcmp(type, "CONSU") == 0){
             if(DEB) printf("Richiesta di consultazione di flussi\n");
 
+        }
+
+        else{
+            simpleTCPmsg(sClient, GOBYE);
+            if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
+            break;
         }
 
     }
