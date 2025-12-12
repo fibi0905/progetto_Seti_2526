@@ -74,11 +74,12 @@ int findUser(const char id [ID_LEN]){
 
 }*/
 
-unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
+unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass, int sock ){
     // int pox;
     // if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
     
     if(DEB) printf("Avvio funzione addUser \n");
+
     //se gia presente non lo fa connettere
     if(findUser(id) != NOTFIND) return NOTOK;   
 
@@ -587,10 +588,15 @@ unsigned int CONNECT(const char *msg){
 
 }
 
+
+
 /*-----------------------------------------------------*/
 
 
 /*------------------Funzione per Thread------------------*/
+
+
+
 void * pthreadConection(void * sockClient){
     int sClient =  * (int *) sockClient;
     //libero memoria allocata, nel main per librerare spazio 
@@ -605,7 +611,7 @@ void * pthreadConection(void * sockClient){
     if(getpeername(sClient, (struct sockaddr*)&client_tcp_addr, &addr_len) < 0) {
         perror("getpeername");
         close(sClient);
-        return NULL;
+        pthread_exit(NULL);
     }
 
     if(DEB){
@@ -620,7 +626,7 @@ void * pthreadConection(void * sockClient){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
         simpleTCPmsg(sClient, GOBYE);
         close(sClient);
-        return NULL;
+        pthread_exit(NULL);
     }
 
     char type[6];
@@ -636,7 +642,7 @@ void * pthreadConection(void * sockClient){
         if(REGIST(buff, sClient, client_tcp_addr) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            return NULL;
+            pthread_exit(NULL);
         }
 
         if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
@@ -656,7 +662,7 @@ void * pthreadConection(void * sockClient){
         if(CONNECT(buff) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            return NULL;
+            pthread_exit(NULL);
         }
 
         if(DEB) printf("Connesione avvenuta con successo %d\n", sClient);
@@ -672,6 +678,51 @@ void * pthreadConection(void * sockClient){
         if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
     }
 
+    while (1){
+        if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
+            if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+            simpleTCPmsg(sClient, GOBYE);
+            close(sClient);
+            pthread_exit(NULL);
+        }
+
+        strncpy(type, buff, 5);
+
+        type[5]='\0';
+
+        if(strcmp(type, "IQUIT") == 0){
+            if(DEB) printf("Richiesta di chiusura della connesione\n");
+            simpleTCPmsg(sClient, GOBYE);
+            close(sClient);
+            pthread_exit(NULL);
+        }
+
+        else if(strcmp(type, "MESS?") == 0){
+            if(DEB) printf("Richiesta di invio di messaggio\n");
+
+        }
+
+        else if(strcmp(type, "FLOO?") == 0){
+            if(DEB) printf("Richiesta di invio di FLOO\n");
+
+        }
+
+        else if(strcmp(type, "FRIE?") == 0){
+            if(DEB) printf("Richiesta di amicizia\n");
+
+        }
+
+        else if(strcmp(type, "LSIT?") == 0){
+            if(DEB) printf("Richiesta di lista utenti\n");
+
+        }
+
+        else if(strcmp(type, "CONSU") == 0){
+            if(DEB) printf("Richiesta di consultazione di flussi\n");
+
+        }
+
+    }
     
    
 
@@ -679,5 +730,5 @@ void * pthreadConection(void * sockClient){
     
     printf("=== Thread terminato per socket %d ===\n\n", sClient);
     close(sClient);
-    return NULL;
+    pthread_exit(NULL);
 }
