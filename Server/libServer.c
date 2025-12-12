@@ -588,7 +588,7 @@ unsigned int CONNECT(const char *msg){
 
 }
 
-
+unsigned int MESSAGE(const char *msg);
 
 /*-----------------------------------------------------*/
 
@@ -621,7 +621,7 @@ void * pthreadConection(void * sockClient){
 
 
     char buff[MAX_TCP_MESAGGE];
-
+    
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
         simpleTCPmsg(sClient, GOBYE);
@@ -630,9 +630,7 @@ void * pthreadConection(void * sockClient){
     }
 
     char type[6];
-
     strncpy(type, buff, 5);
-
     type[5]='\0';
 
     if(strcmp(type, "REGIS") == 0){
