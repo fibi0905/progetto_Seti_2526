@@ -1,4 +1,5 @@
 #include "Server.h"
+#include "../src/utility.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -287,17 +288,6 @@ unsigned int okMSG(const char * msg, size_t dimMsg){
 }
 
 
-unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]){
-    // Converte la password da little-endian a unsigned int
-    return mdpBYTE[0] | (mdpBYTE[1] << 8);
-    /*
-        << fa uno shift a sinistra di 8 bit
-        poi mette in or con il byte meno significativo 
-        
-    */
-}
-
-
 /*--------------------------------------------------------------*/
 
 
@@ -388,6 +378,69 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
     ssize_t byteSent = write(sock, msg, strlen(msg)*sizeof(char));  
 
     if(byteSent <= 0) return NOTOK;
+
+    return OK;
+
+}
+
+unsigned int sendUDPmessage(const char IDS[ID_LEN], typFlux tip, unsigned int numFlux){
+    unsigned int pox;
+    if((pox = findUser(IDS)) == NOTFIND) return NOTOK;
+
+    char typeChar;
+
+    switch (tip){
+    case FRIE_Req:
+        typeChar = '0';
+        break;
+    
+    case FRIE_A:
+        typeChar = '1';
+        break;
+
+    case FRIE_R:
+        typeChar = '2';
+        break;
+
+    case MSG:
+        typeChar = '3';
+        break;
+
+    case FLOO:
+        typeChar = '4';
+        break;    
+    default:
+        if(DEB) printf("sendUDPmessage: TYPE NOT EXIST\n");
+        return NOTOK;
+    }
+
+    unsigned char numberLittelEndian [2];
+
+    usingedIntTOlitEndian(numFlux, numberLittelEndian);
+
+    char mess[4];
+
+    mess[0] = typeChar;
+    mess[1]= numberLittelEndian[1];
+    mess[2]= numberLittelEndian[2];
+    mess[3]=  '\0';
+    
+    pthread_mutex_lock(&semList);
+
+    struct sockaddr_in addrReciver = listUser[pox].add;
+    
+    pthread_mutex_unlock(&semList);
+    
+
+    pthread_mutex_lock(&semUDP);
+
+    ssize_t byteSend = sendto(udpSocket, mess, 3,0, (struct sockaddr *) &addrReciver, sizeof(addrReciver));
+
+    pthread_mutex_unlock(&semUDP);
+
+    if(byteSend < 0) return NOTOK;
+
+    if(DEB) printf("sendUDPmessage: notfication send: [%s]\n", mess);
 
     return OK;
 
@@ -600,7 +653,44 @@ unsigned int CONNECT(const char *msg){
 
 }
 
-unsigned int MESSAGE(const char *msg);
+unsigned int MESSAGE(const char *msg){
+    //controllo che gli utenti siano amici e che esistano 
+
+    //controllo che ci siano alemno due user 
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1){
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    }
+    pthread_mutex_unlock(&semNuser);
+
+
+    /*
+        lunghezza masssima:
+            MESS? (5) + (1) + ID(8) + (1) + MESS(200) + "+++" (3) = 218 byte
+
+        lunghezza minima:
+            MESS? (5) + (1) + ID(8) + (1) + MESS(1) + "+++" (3) = 11 byte
+    
+    */
+   size_t sizeStr  = strlen(msg);
+
+   if(sizeStr<11 || sizeStr>218){
+        if(DEB) printf("MESSAGE: messaggio non coretto\n");
+        return NOTOK;
+   }
+
+   char IDR[ID_LEN];
+
+   strncpy(IDR, msg, (ID_LEN-1));
+   IDR[(ID_LEN-1)] = '\0';
+   
+
+
+
+}
+
+
 
 /*-----------------------------------------------------*/
 
@@ -659,8 +749,6 @@ void * pthreadConection(void * sockClient){
 
         simpleTCPmsg(sClient, WELCO);
         
-
-        //Funzione per utenti gia connessi  
         
     }
 
@@ -679,7 +767,6 @@ void * pthreadConection(void * sockClient){
 
         simpleTCPmsg(sClient, HELLO);
 
-        //Funzione per utenti gia connessi  
 
     }   
 
