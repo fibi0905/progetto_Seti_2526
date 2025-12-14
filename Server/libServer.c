@@ -653,12 +653,18 @@ unsigned int CONNECT(const char *msg){
 
 }
 
-unsigned int MESSAGE(const char *msg){
+unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
     //controllo che gli utenti siano amici e che esistano 
+    
+    if(findUser(idSender) == NOTFIND){
+        if(DEB) printf("MESSAGE: User sendere not fund\n");
+        return NOTOK;
+    }
 
     //controllo che ci siano alemno due user 
     pthread_mutex_lock(&semNuser);
     if(nUser <= 1){
+        if(DEB) printf("MESSAGE: non ci sono abbastanza persone\n");
         pthread_mutex_unlock(&semNuser);
         return NOTOK;
     }
@@ -682,9 +688,21 @@ unsigned int MESSAGE(const char *msg){
 
    char IDR[ID_LEN];
 
-   strncpy(IDR, msg, (ID_LEN-1));
+   strncpy(IDR, msg+6, (ID_LEN-1));
    IDR[(ID_LEN-1)] = '\0';
+
+
+   unsigned int pox;
+   if((pox = findUser(IDR)) == NOTFIND){
+        if(DEB) printf("MESSAGE: User reciver not fund\n");
+        return NOTOK;
+    }
+
    
+    char contMSG [MAX_LEN];
+    size_t byteMSG = (strlen(msg) - (7 + (ID_LEN-1))); 
+
+    if(DEB) printf("il messaggio da inviare è lungo %u byte\n", byteMSG);
 
 
 
@@ -723,6 +741,7 @@ void * pthreadConection(void * sockClient){
 
 
     char buff[MAX_TCP_MESAGGE];
+    char id [ID_LEN];
     
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
@@ -745,10 +764,13 @@ void * pthreadConection(void * sockClient){
             pthread_exit(NULL);
         }
 
-        if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
-
+        
         simpleTCPmsg(sClient, WELCO);
         
+        strncpy(id, buff+6, (ID_LEN-1));
+        id[(ID_LEN-1)] = '\0';
+        
+        if(DEB) printf("User [ %s ] registrato e conneso su socket: %d\n", id ,sClient);
         
     }
 
@@ -763,11 +785,13 @@ void * pthreadConection(void * sockClient){
             pthread_exit(NULL);
         }
 
-        if(DEB) printf("Connesione avvenuta con successo %d\n", sClient);
-
+        
         simpleTCPmsg(sClient, HELLO);
-
-
+        
+        strncpy(id, buff+6, (ID_LEN-1));
+        id[(ID_LEN-1)] = '\0';
+        
+        if(DEB) printf("Connesione [ %s ] avvenuta con successo %d\n", id,sClient);
     }   
 
     else{
@@ -777,7 +801,7 @@ void * pthreadConection(void * sockClient){
 
     while (1){
 
-        if(DEB) printf("BUFF: %s ---\n", buff);
+        //if(DEB) printf("BUFF: %s ---\n", buff);
 
 
         if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
