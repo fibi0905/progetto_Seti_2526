@@ -221,6 +221,8 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     listUser[pox].nMsg++;
     pthread_mutex_unlock(&semNuser);
 
+
+
     return OK;
 }
 
@@ -655,7 +657,7 @@ unsigned int CONNECT(const char *msg){
 
 unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
     //controllo che gli utenti siano amici e che esistano 
-    
+
     if(findUser(idSender) == NOTFIND){
         if(DEB) printf("MESSAGE: User sendere not fund\n");
         return NOTOK;
@@ -677,33 +679,34 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
 
         lunghezza minima:
             MESS? (5) + (1) + ID(8) + (1) + MESS(1) + "+++" (3) = 11 byte
-    
+
     */
-   size_t sizeStr  = strlen(msg);
+    size_t sizeStr  = strlen(msg);
 
     if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
 
-   if(sizeStr<6 || sizeStr>218){
+    if(sizeStr<6 || sizeStr>218){
         if(DEB) printf("MESSAGE: messaggio non coretto\n");
         return NOTOK;
-   }
+    }
 
-   char IDR[ID_LEN];
+    char IDR[ID_LEN];
 
-   strncpy(IDR, msg+6, (ID_LEN-1));
-   IDR[(ID_LEN-1)] = '\0';
-
-   
-   if(friendAS(IDR, idSender) == NOTOK  ){
-        if(DEB) printf("MESSAGE: gli user non sono amici\n");
-        return NOTOK;
-   }
-
+    strncpy(IDR, msg+6, (ID_LEN-1));
+    IDR[(ID_LEN-1)] = '\0';
 
     char contMSG [MAX_LEN];
     size_t byteMSG = (strlen(msg) - 18); 
 
-    if(DEB) printf("il messaggio da inviare è lungo %lu byte\n", byteMSG);
+    strncpy(contMSG, msg+15, byteMSG);
+
+    if(DEB) printf("il messaggio da inviare \"%s\"  ed è lungo %lu byte\n", contMSG,byteMSG);
+
+    if(addMSG(IDR, idSender, contMSG, MSG) == NOTOK){
+        if(DEB) printf("MESSAGE: il messaggio non è stato aggiunto alla lista di %s\n", IDR);
+        return NOTOK;
+    }
+
 
 
 
