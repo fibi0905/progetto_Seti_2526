@@ -327,6 +327,17 @@ unsigned int serverInit (unsigned int d){
         return NOTOK;
     }
 
+    struct sockaddr_in udp_addr;
+    udp_addr.sin_family = AF_INET;
+    udp_addr.sin_addr.s_addr = INADDR_ANY;
+    udp_addr.sin_port = htons(0); 
+      
+    if(bind(udpSocket, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0) {
+        perror("UDP bind");
+        close(udpSocket);
+        return NOTOK;
+    }
+
     return OK;
 }
 
@@ -385,9 +396,9 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
 
 }
 
-unsigned int sendUDPmessage(const char IDS[ID_LEN], typFlux tip, unsigned int numFlux){
+unsigned int sendUDPmessage(const char IDR[ID_LEN], typFlux tip){
     unsigned int pox;
-    if((pox = findUser(IDS)) == NOTFIND) return NOTOK;
+    if((pox = findUser(IDR)) == NOTFIND) return NOTOK;
 
     char typeChar;
 
@@ -416,16 +427,23 @@ unsigned int sendUDPmessage(const char IDS[ID_LEN], typFlux tip, unsigned int nu
         return NOTOK;
     }
 
-    unsigned char numberLittelEndian [2];
+    char numberLittelEndian [3];
 
-    usingedIntTOlitEndian(numFlux, numberLittelEndian);
+    pthread_mutex_lock(&semList);
+    
+    usingedIntTOlitEndian(1, numberLittelEndian);
 
-    char mess[4];
+    pthread_mutex_unlock(&semList);
+
+    if(DEB) printf("numberLittelEndian[0]: %d\nnumberLittelEndian[1] %d\n", numberLittelEndian[0], numberLittelEndian[1]);
+
+
+    unsigned char mess[4];
 
     mess[0] = typeChar;
-    mess[1]= numberLittelEndian[1];
-    mess[2]= numberLittelEndian[2];
-    mess[3]=  '\0';
+    mess[1] = numberLittelEndian[0];
+    mess[2] = numberLittelEndian[1];
+    mess[3] =  '\0';
     
     pthread_mutex_lock(&semList);
 
@@ -433,6 +451,15 @@ unsigned int sendUDPmessage(const char IDS[ID_LEN], typFlux tip, unsigned int nu
     
     pthread_mutex_unlock(&semList);
     
+
+    if(DEB){
+        char *client_ip = inet_ntoa(addrReciver.sin_addr);
+        printf("sendUDPmessage: invio di messaggio a:\n");
+        printf("    IP: %s\n", client_ip);
+        printf("    PORT: %u\n", htonl(addrReciver.sin_port));
+        printf("    ID: %s\n", IDR);
+    }
+
 
     pthread_mutex_lock(&semUDP);
 
@@ -442,7 +469,7 @@ unsigned int sendUDPmessage(const char IDS[ID_LEN], typFlux tip, unsigned int nu
 
     if(byteSend < 0) return NOTOK;
 
-    if(DEB) printf("sendUDPmessage: notfication send: [%s]\n", mess);
+    if(DEB) printf("sendUDPmessage: notfication send: [ %s ]\n", mess);
 
     return OK;
 
@@ -503,7 +530,7 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
 
 }
 
-unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Client){
+unsigned int REGIST(const char *msg, struct sockaddr_in TCP_ADDR_Client){
 
     //minima lunghezza:  REGIS (5) + (1) + ID(8) + (1) + PORT (4) +(1) + mdp (2) +"+++" (3) = 25
     if(strlen(msg) < 25){
@@ -568,7 +595,7 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
     struct sockaddr_in UDP_ADDR_Client;
     UDP_ADDR_Client.sin_family =AF_INET;
     UDP_ADDR_Client.sin_addr = TCP_ADDR_Client.sin_addr;
-    UDP_ADDR_Client.sin_port = portUDP;
+    UDP_ADDR_Client.sin_port = htons(portUDP);
 
 
     if(DEB){
@@ -683,7 +710,7 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
     */
     size_t sizeStr  = strlen(msg);
 
-    if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
+    //if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
 
     if(sizeStr<6 || sizeStr>218){
         if(DEB) printf("MESSAGE: messaggio non coretto\n");
@@ -702,12 +729,18 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
 
     if(DEB) printf("il messaggio da inviare \"%s\"  ed è lungo %lu byte\n", contMSG,byteMSG);
 
+    if(sendUDPmessage(IDR, MSG) == NOTOK){
+        if(DEB) printf("MESSAGE: la notifica non è stata inviata e quindi non è stato aggiunto il messaggio\n");
+        return NOTOK;
+    }
+
+    
     if(addMSG(IDR, idSender, contMSG, MSG) == NOTOK){
         if(DEB) printf("MESSAGE: il messaggio non è stato aggiunto alla lista di %s\n", IDR);
         return NOTOK;
     }
 
-
+    return OK;
 
 }
 
@@ -763,7 +796,7 @@ void * pthreadConection(void * sockClient){
         //registrazione
         if(DEB) printf("Richiesta di Registrazione su socket %d\n", sClient);
 
-        if(REGIST(buff, sClient, client_tcp_addr) == NOTOK){
+        if(REGIST(buff,  client_tcp_addr) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
             pthread_exit(NULL);
