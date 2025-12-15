@@ -709,7 +709,6 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
 
 
 
-
 }
 
 
