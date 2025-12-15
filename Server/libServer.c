@@ -681,7 +681,9 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
     */
    size_t sizeStr  = strlen(msg);
 
-   if(sizeStr<11 || sizeStr>218){
+    if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
+
+   if(sizeStr<6 || sizeStr>218){
         if(DEB) printf("MESSAGE: messaggio non coretto\n");
         return NOTOK;
    }
@@ -691,18 +693,17 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
    strncpy(IDR, msg+6, (ID_LEN-1));
    IDR[(ID_LEN-1)] = '\0';
 
-
-   unsigned int pox;
-   if((pox = findUser(IDR)) == NOTFIND){
-        if(DEB) printf("MESSAGE: User reciver not fund\n");
-        return NOTOK;
-    }
-
    
-    char contMSG [MAX_LEN];
-    size_t byteMSG = (strlen(msg) - (7 + (ID_LEN-1))); 
+   if(friendAS(IDR, idSender) == NOTOK  ){
+        if(DEB) printf("MESSAGE: gli user non sono amici\n");
+        return NOTOK;
+   }
 
-    if(DEB) printf("il messaggio da inviare è lungo %u byte\n", byteMSG);
+
+    char contMSG [MAX_LEN];
+    size_t byteMSG = (strlen(msg) - 18); 
+
+    if(DEB) printf("il messaggio da inviare è lungo %lu byte\n", byteMSG);
 
 
 
@@ -722,6 +723,8 @@ void * pthreadConection(void * sockClient){
     //libero memoria allocata, nel main per librerare spazio 
     //dato la possibilià che vi siano più client 
     free(sockClient);
+
+    unsigned int connesso = 1;
 
     printf("\n=== Thread avviato per socket %d ===\n", sClient);
 
@@ -797,9 +800,11 @@ void * pthreadConection(void * sockClient){
     else{
         simpleTCPmsg(sClient, GOBYE);
         if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
+        connesso = 0;
+
     }
 
-    while (1){
+    while (connesso){
 
         //if(DEB) printf("BUFF: %s ---\n", buff);
 
@@ -820,12 +825,20 @@ void * pthreadConection(void * sockClient){
         if(strcmp(type, "IQUIT") == 0){
             if(DEB) printf("Richiesta di chiusura della connesione\n");
             simpleTCPmsg(sClient, GOBYE);
-            close(sClient);
-            pthread_exit(NULL);
+            break;
         }
 
         else if(strcmp(type, "MESS?") == 0){
             if(DEB) printf("Richiesta di invio di messaggio\n");
+
+            if(MESSAGE(buff, id) == NOTOK ){
+                if(DEB) printf("Messaggio non inviato\n");
+                simpleTCPmsg(sClient, MESS_NOTOK);
+            }
+            else{
+                if(DEB) printf("Messaggio inviato\n");
+                simpleTCPmsg(sClient, MESS_OK);
+            }
 
         }
 
