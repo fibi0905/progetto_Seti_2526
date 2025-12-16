@@ -151,6 +151,11 @@ unsigned int friendAS (const char idR[ID_LEN], const char idS [ID_LEN]){
 
 //devo aggiungere ad idD (idDestination), idS (idSorgente) come amico; 
 unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
+    if(friendAS(idD, idS) == OK){
+        if(DEB) printf("addFrined: gli utenti sono già amaici\n");
+        return OK;
+    }
+
     pthread_mutex_lock(&semNuser);
     if(nUser <= 1) {
         pthread_mutex_unlock(&semNuser);
@@ -176,7 +181,8 @@ unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
     pthread_mutex_unlock(&semList);
 
 
-    return OK;
+    return addFrined(idS, idD); // se user accetta l'amicizia allora va aggiunto a tutti e due 
+    
 }
 
 
@@ -791,12 +797,12 @@ unsigned int FREIREQ(const char *msg, const char idSender[ID_LEN]){
         return NOTOK;
     }
 
-    if(sendUDPmessage(IDR, FRIE_R) == NOTOK ){
+    if(sendUDPmessage(IDR, FRIE_Req) == NOTOK ){
         if(DEB) printf("FREIREQ: notifica udp non avvenuta, non aggiungo alla lista\n");
         return NOTOK;
     }
 
-    if(addMSG(IDR, idSender, NULL, FRIE_R) == NOTFIND){
+    if(addMSG(IDR, idSender, NULL, FRIE_Req) == NOTFIND){
         if(DEB) printf("FREIREQ: richiesta non aggiunta\n");
         return NOTOK;
     }
@@ -806,9 +812,66 @@ unsigned int FREIREQ(const char *msg, const char idSender[ID_LEN]){
 
 /*==========LIST==========*/
 
-unsigned int LISTNUM(int sock);
+unsigned int LISTNUM(int sock){
+    //cosidero che almeno un user ci sia;
 
-unsigned int LISTUSER(int sock, unsigned int nUs);
+    /*
+        [13] -> RLIST (5) + (1) + numItem (3 -> 100) + "+++" (3) + '\0' (1)
+    */
+    char msgSend [13];
+
+    pthread_mutex_lock(&semNuser);
+
+    sprintf(msgSend, "RLIST %u+++", nUser);
+
+    pthread_mutex_unlock(&semNuser);
+
+
+    if(DEB) printf("LISTNUM: invia il messaggio \"%s\"\n", msgSend);
+
+    ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+    if(byteSent <= 0) return NOTOK;
+
+    return OK;
+    
+}
+
+unsigned int LISTUSER(int sock){
+    
+    //considero che ci sia almeno un utente;
+
+    /*
+    
+        [18] = LINUM (5) +(1) + ID (8) + "+++" (3) + '\0' (1)
+
+    */
+    char msgSend[18];
+
+    pthread_mutex_lock(&semNuser);
+    pthread_mutex_lock(&semList);
+
+    for(unsigned int i = 0; i < nUser; i++){
+        sprintf(msgSend, "LINUM %s+++", listUser[i].id);
+
+        ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+        if(byteSent <= 0){
+            pthread_mutex_unlock(&semNuser);
+            pthread_mutex_unlock(&semList);
+            return NOTOK;
+        }
+
+        if(DEB) printf("LISTUSER: invia il messaggio \"%s\"\n", msgSend);
+
+    }
+
+
+    pthread_mutex_unlock(&semNuser);
+    pthread_mutex_unlock(&semList);
+
+    return OK;
+}
 
 /*========================*/
 
@@ -827,6 +890,8 @@ void * pthreadConection(void * sockClient){
     free(sockClient);
 
     unsigned int connesso = 1;
+    unsigned int ok = 1;
+
 
     printf("\n=== Thread avviato per socket %d ===\n", sClient);
 
@@ -850,16 +915,14 @@ void * pthreadConection(void * sockClient){
     
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
-        simpleTCPmsg(sClient, GOBYE);
-        close(sClient);
-        pthread_exit(NULL);
+        ok = 0;
     }
 
     char type[6];
     strncpy(type, buff, 5);
     type[5]='\0';
 
-    if(strcmp(type, "REGIS") == 0){
+    if(strcmp(type, "REGIS") == 0  && ok == 1){
         //registrazione
         if(DEB) printf("Richiesta di Registrazione su socket %d\n", sClient);
 
@@ -882,13 +945,12 @@ void * pthreadConection(void * sockClient){
     }
 
 
-    else if(strcmp (type, "CONNE") == 0){
+    else if(strcmp (type, "CONNE") == 0 && ok == 1){
         //connesione ad utente 
         if(DEB) printf("Richiesta di Connesione su socket %d\n", sClient);
         
         if(CONNECT(buff) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
-            close(sClient);
             connesso = 0;
         }
         else{
@@ -917,10 +979,9 @@ void * pthreadConection(void * sockClient){
 
 
         if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
-            if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+            if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE su socket [ %d ]\n", sClient);
             simpleTCPmsg(sClient, GOBYE);
-            close(sClient);
-            pthread_exit(NULL);
+            break;
         }
 
        // if(DEB) printf("Thread [ socket: %d ] ha ricevuto:  %s\n", sClient, buff);
@@ -940,7 +1001,7 @@ void * pthreadConection(void * sockClient){
             if(DEB) printf("Richiesta di invio di messaggio\n");
 
             if(MESSAGE(buff, id) == NOTOK ){
-                if(DEB) printf("Messaggio non inviato\n");
+                if(DEB) printf("Messaggio non inviato su socket [ %d ]\n", sClient);
                 simpleTCPmsg(sClient, MESS_NOTOK);
             }
             else{
@@ -965,7 +1026,7 @@ void * pthreadConection(void * sockClient){
             if(DEB) printf("Richiesta di amicizia\n");
 
             if(FREIREQ(buff, id) == NOTOK){
-                if(DEB) printf("Richiesta non inviata\n");
+                if(DEB) printf("Richiesta non inviata su socket [ %d ]\n", sClient);
                 simpleTCPmsg(sClient, FRIE_NOTOK);
             }
             else{
@@ -980,6 +1041,19 @@ void * pthreadConection(void * sockClient){
         else if(strcmp(type, "LIST?") == 0){
             if(DEB) printf("Richiesta di lista utenti\n");
 
+            if(LISTNUM(sClient) != NOTFIND){
+                if(DEB) printf("Numero di client presenti inviato\n");
+
+                if(LISTUSER(sClient) == NOTOK){
+                    if(DEB) printf("Non sono stati inviati gli id degli utenti su socket [ %d ]\n", sClient);
+                }
+
+                if(DEB) printf("Invio di tutti i dati per richiesta lista utenti\n");
+
+            }
+            else{
+                if(DEB) printf("Errore nel invio di numero di client presenti su socket [ %d ]\n", sClient);
+            }
         }
 
         
@@ -989,9 +1063,12 @@ void * pthreadConection(void * sockClient){
 
         }
 
+
+
+
         else{
             simpleTCPmsg(sClient, GOBYE);
-            if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
+            if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione su socket [ %d ]\n", type, sClient);
             break;
         }
 
