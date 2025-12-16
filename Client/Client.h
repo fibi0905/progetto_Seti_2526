@@ -16,7 +16,6 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
-#include <endian.h>
 
 //TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;
