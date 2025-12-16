@@ -1,5 +1,3 @@
-
-
 #include <pthread.h>
 #include "../src/utility.h"
 
@@ -24,7 +22,7 @@ enum typFlux{
 enum typSimpleMsg{
     WELCO,
     GOBYE,
-    HELLO, 
+    HELLO,
     FRIE_OK,
     FRIE_NOTOK,
     MESS_OK,

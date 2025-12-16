@@ -1,4 +1,3 @@
-#pragma once
 
 // librerie comuni
 #include <netinet/in.h>
@@ -20,3 +19,11 @@
 
 #define SERVER_PORT 8080
 #define INDIRIZZO_SERVER "0.0.0.0"
+
+
+
+//converte da little-endian a unsigned int 
+unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]);
+
+//converte da usinged int a littel-endian
+void usingedIntTOlitEndian(unsigned int value, char hexString[3]);

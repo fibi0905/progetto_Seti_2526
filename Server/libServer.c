@@ -1,9 +1,12 @@
 #include "Server.h"
+#include "../src/utility.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <ctype.h>
+
 
 /*-------Variabili & Semafori-------*/
 
@@ -74,11 +77,12 @@ int findUser(const char id [ID_LEN]){
 
 }*/
 
-unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass ){
+unsigned int addUser(const char id [ID_LEN], struct sockaddr_in add, unsigned int pass){
     // int pox;
     // if((pox = findUser(id)) != NOTFIND) return modUser(pox, add); //potrebbe non aver senso 
     
     if(DEB) printf("Avvio funzione addUser \n");
+
     //se gia presente non lo fa connettere
     if(findUser(id) != NOTFIND) return NOTOK;   
 
@@ -217,6 +221,8 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     listUser[pox].nMsg++;
     pthread_mutex_unlock(&semNuser);
 
+
+
     return OK;
 }
 
@@ -284,17 +290,6 @@ unsigned int okMSG(const char * msg, size_t dimMsg){
 }
 
 
-unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]){
-    // Converte la password da little-endian a unsigned int
-    return mdpBYTE[0] | (mdpBYTE[1] << 8);
-    /*
-        << fa uno shift a sinistra di 8 bit
-        poi mette in or con il byte meno significativo 
-        
-    */
-}
-
-
 /*--------------------------------------------------------------*/
 
 
@@ -329,6 +324,17 @@ unsigned int serverInit (unsigned int d){
     udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if(udpSocket < 0) {
         perror("UDP socket creation");
+        return NOTOK;
+    }
+
+    struct sockaddr_in udp_addr;
+    udp_addr.sin_family = AF_INET;
+    udp_addr.sin_addr.s_addr = INADDR_ANY;
+    udp_addr.sin_port = htons(0); 
+      
+    if(bind(udpSocket, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0) {
+        perror("UDP bind");
+        close(udpSocket);
         return NOTOK;
     }
 
@@ -390,6 +396,85 @@ unsigned int simpleTCPmsg (int sock, typSimpleMsg tip){
 
 }
 
+unsigned int sendUDPmessage(const char IDR[ID_LEN], typFlux tip){
+    unsigned int pox;
+    if((pox = findUser(IDR)) == NOTFIND) return NOTOK;
+
+    char typeChar;
+
+    switch (tip){
+    case FRIE_Req:
+        typeChar = '0';
+        break;
+    
+    case FRIE_A:
+        typeChar = '1';
+        break;
+
+    case FRIE_R:
+        typeChar = '2';
+        break;
+
+    case MSG:
+        typeChar = '3';
+        break;
+
+    case FLOO:
+        typeChar = '4';
+        break;    
+    default:
+        if(DEB) printf("sendUDPmessage: TYPE NOT EXIST\n");
+        return NOTOK;
+    }
+
+    char numberLittelEndian [3];
+
+    pthread_mutex_lock(&semList);
+    
+    usingedIntTOlitEndian(1, numberLittelEndian);
+
+    pthread_mutex_unlock(&semList);
+
+    if(DEB) printf("numberLittelEndian[0]: %d\nnumberLittelEndian[1] %d\n", numberLittelEndian[0], numberLittelEndian[1]);
+
+
+    unsigned char mess[4];
+
+    mess[0] = typeChar;
+    mess[1] = numberLittelEndian[0];
+    mess[2] = numberLittelEndian[1];
+    mess[3] =  '\0';
+    
+    pthread_mutex_lock(&semList);
+
+    struct sockaddr_in addrReciver = listUser[pox].add;
+    
+    pthread_mutex_unlock(&semList);
+    
+
+    if(DEB){
+        char *client_ip = inet_ntoa(addrReciver.sin_addr);
+        printf("sendUDPmessage: invio di messaggio a:\n");
+        printf("    IP: %s\n", client_ip);
+        printf("    PORT: %u\n", htonl(addrReciver.sin_port));
+        printf("    ID: %s\n", IDR);
+    }
+
+
+    pthread_mutex_lock(&semUDP);
+
+    ssize_t byteSend = sendto(udpSocket, mess, 3,0, (struct sockaddr *) &addrReciver, sizeof(addrReciver));
+
+    pthread_mutex_unlock(&semUDP);
+
+    if(byteSend < 0) return NOTOK;
+
+    if(DEB) printf("sendUDPmessage: notfication send: [ %s ]\n", mess);
+
+    return OK;
+
+}
+
 //funziona ma insicura !!!
 unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     if (buff == NULL || dimBuff < 8) {
@@ -403,31 +488,41 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
     
     // Inizializza il buffer
     memset(buff, 0, dimBuff);
+
+    
     
     // Legge byte per byte fino a trovare "+++"
     while (msgTotlen < dimBuff - 1) {
         ssize_t bytesRead = read(sock, &tempBuf, 1);
+        //if(DEB) printf("byte letto: %c\n", tempBuf);
         
         if (bytesRead <= 0) {
             // Errore o connessione chiusa
             return NOTOK;
         }
+
         
-        buff[msgTotlen] = tempBuf;
-        msgTotlen++;
         
-        // Controlla se abbiamo trovato la sequenza terminatrice "+++"
-        if (tempBuf == '+') {
-            plus++;
-            if (plus == 3) {
-                break; 
-            }
-        } else {
-            plus = 0; 
+        if(isalnum(tempBuf) || tempBuf == '+' || tempBuf == ' ' || tempBuf == '?' || tempBuf == '<' || tempBuf == '>'){
+            //if(DEB) printf("byte scritto: %c\n", tempBuf);
+
+            buff[msgTotlen] = tempBuf;
+            msgTotlen++;
+            
+            // Controlla se abbiamo trovato la sequenza terminatrice "+++"
+            if (tempBuf == '+') {
+                plus++;
+                if (plus == 3) {
+                    break; 
+                }
+            } else {
+                plus = 0; 
         }
+        }
+       
     }
 
-    if((msgTotlen-3) <8) return NOTOK;
+    if(msgTotlen <8) return NOTOK;
 
     buff[msgTotlen] ='\0';
     return OK;
@@ -435,7 +530,7 @@ unsigned int readTCPmessage (int sock, char * buff, size_t dimBuff){
 
 }
 
-unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Client){
+unsigned int REGIST(const char *msg, struct sockaddr_in TCP_ADDR_Client){
 
     //minima lunghezza:  REGIS (5) + (1) + ID(8) + (1) + PORT (4) +(1) + mdp (2) +"+++" (3) = 25
     if(strlen(msg) < 25){
@@ -500,7 +595,7 @@ unsigned int REGIST(const char *msg, int sock, struct sockaddr_in TCP_ADDR_Clien
     struct sockaddr_in UDP_ADDR_Client;
     UDP_ADDR_Client.sin_family =AF_INET;
     UDP_ADDR_Client.sin_addr = TCP_ADDR_Client.sin_addr;
-    UDP_ADDR_Client.sin_port = portUDP;
+    UDP_ADDR_Client.sin_port = htons(portUDP);
 
 
     if(DEB){
@@ -587,15 +682,84 @@ unsigned int CONNECT(const char *msg){
 
 }
 
+unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
+    //controllo che gli utenti siano amici e che esistano 
+
+    if(findUser(idSender) == NOTFIND){
+        if(DEB) printf("MESSAGE: User sendere not fund\n");
+        return NOTOK;
+    }
+
+    //controllo che ci siano alemno due user 
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1){
+        if(DEB) printf("MESSAGE: non ci sono abbastanza persone\n");
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    }
+    pthread_mutex_unlock(&semNuser);
+
+
+    /*
+        lunghezza masssima:
+            MESS? (5) + (1) + ID(8) + (1) + MESS(200) + "+++" (3) = 218 byte
+
+        lunghezza minima:
+            MESS? (5) + (1) + ID(8) + (1) + MESS(1) + "+++" (3) = 11 byte
+
+    */
+    size_t sizeStr  = strlen(msg);
+
+    //if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
+
+    if(sizeStr<6 || sizeStr>218){
+        if(DEB) printf("MESSAGE: messaggio non coretto\n");
+        return NOTOK;
+    }
+
+    char IDR[ID_LEN];
+
+    strncpy(IDR, msg+6, (ID_LEN-1));
+    IDR[(ID_LEN-1)] = '\0';
+
+    char contMSG [MAX_LEN];
+    size_t byteMSG = (strlen(msg) - 18); 
+
+    strncpy(contMSG, msg+15, byteMSG);
+
+    if(DEB) printf("il messaggio da inviare \"%s\"  ed è lungo %lu byte\n", contMSG,byteMSG);
+
+    if(sendUDPmessage(IDR, MSG) == NOTOK){
+        if(DEB) printf("MESSAGE: la notifica non è stata inviata e quindi non è stato aggiunto il messaggio\n");
+        return NOTOK;
+    }
+
+    
+    if(addMSG(IDR, idSender, contMSG, MSG) == NOTOK){
+        if(DEB) printf("MESSAGE: il messaggio non è stato aggiunto alla lista di %s\n", IDR);
+        return NOTOK;
+    }
+
+    return OK;
+
+}
+
+
+
 /*-----------------------------------------------------*/
 
 
 /*------------------Funzione per Thread------------------*/
+
+
+
 void * pthreadConection(void * sockClient){
     int sClient =  * (int *) sockClient;
     //libero memoria allocata, nel main per librerare spazio 
     //dato la possibilià che vi siano più client 
     free(sockClient);
+
+    unsigned int connesso = 1;
 
     printf("\n=== Thread avviato per socket %d ===\n", sClient);
 
@@ -605,7 +769,7 @@ void * pthreadConection(void * sockClient){
     if(getpeername(sClient, (struct sockaddr*)&client_tcp_addr, &addr_len) < 0) {
         perror("getpeername");
         close(sClient);
-        return NULL;
+        pthread_exit(NULL);
     }
 
     if(DEB){
@@ -615,36 +779,36 @@ void * pthreadConection(void * sockClient){
 
 
     char buff[MAX_TCP_MESAGGE];
-
+    char id [ID_LEN];
+    
     if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
         if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
         simpleTCPmsg(sClient, GOBYE);
         close(sClient);
-        return NULL;
+        pthread_exit(NULL);
     }
 
     char type[6];
-
     strncpy(type, buff, 5);
-
     type[5]='\0';
 
     if(strcmp(type, "REGIS") == 0){
         //registrazione
         if(DEB) printf("Richiesta di Registrazione su socket %d\n", sClient);
 
-        if(REGIST(buff, sClient, client_tcp_addr) == NOTOK){
+        if(REGIST(buff,  client_tcp_addr) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            return NULL;
+            pthread_exit(NULL);
         }
 
-        if(DEB) printf("User registrato e conneso su socket: %d\n", sClient);
-
+        
         simpleTCPmsg(sClient, WELCO);
         
-
-        //Funzione per utenti gia connessi  
+        strncpy(id, buff+6, (ID_LEN-1));
+        id[(ID_LEN-1)] = '\0';
+        
+        if(DEB) printf("User [ %s ] registrato e conneso su socket: %d\n", id ,sClient);
         
     }
 
@@ -656,22 +820,90 @@ void * pthreadConection(void * sockClient){
         if(CONNECT(buff) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            return NULL;
+            pthread_exit(NULL);
         }
 
-        if(DEB) printf("Connesione avvenuta con successo %d\n", sClient);
-
+        
         simpleTCPmsg(sClient, HELLO);
-
-        //Funzione per utenti gia connessi  
-
+        
+        strncpy(id, buff+6, (ID_LEN-1));
+        id[(ID_LEN-1)] = '\0';
+        
+        if(DEB) printf("Connesione [ %s ] avvenuta con successo %d\n", id,sClient);
     }   
 
     else{
         simpleTCPmsg(sClient, GOBYE);
         if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
+        connesso = 0;
+
     }
 
+    while (connesso){
+
+        //if(DEB) printf("BUFF: %s ---\n", buff);
+
+
+        if(readTCPmessage(sClient, buff, sizeof(buff)) == NOTOK){
+            if(DEB) printf("il messaggio letto non è ok:  CHIUDO LA CONNESIONE\n");
+            simpleTCPmsg(sClient, GOBYE);
+            close(sClient);
+            pthread_exit(NULL);
+        }
+
+       // if(DEB) printf("Thread [ socket: %d ] ha ricevuto:  %s\n", sClient, buff);
+
+        strncpy(type, buff, 5);
+
+        type[5]='\0';
+
+        if(strcmp(type, "IQUIT") == 0){
+            if(DEB) printf("Richiesta di chiusura della connesione\n");
+            simpleTCPmsg(sClient, GOBYE);
+            break;
+        }
+
+        else if(strcmp(type, "MESS?") == 0){
+            if(DEB) printf("Richiesta di invio di messaggio\n");
+
+            if(MESSAGE(buff, id) == NOTOK ){
+                if(DEB) printf("Messaggio non inviato\n");
+                simpleTCPmsg(sClient, MESS_NOTOK);
+            }
+            else{
+                if(DEB) printf("Messaggio inviato\n");
+                simpleTCPmsg(sClient, MESS_OK);
+            }
+
+        }
+
+        else if(strcmp(type, "FLOO?") == 0){
+            if(DEB) printf("Richiesta di invio di FLOO\n");
+
+        }
+
+        else if(strcmp(type, "FRIE?") == 0){
+            if(DEB) printf("Richiesta di amicizia\n");
+
+        }
+
+        else if(strcmp(type, "LIST?") == 0){
+            if(DEB) printf("Richiesta di lista utenti\n");
+
+        }
+
+        else if(strcmp(type, "CONSU") == 0){
+            if(DEB) printf("Richiesta di consultazione di flussi\n");
+
+        }
+
+        else{
+            simpleTCPmsg(sClient, GOBYE);
+            if(DEB) printf("Commando sconosciuto \"%s\" chiudo connesione\n", type);
+            break;
+        }
+
+    }
     
    
 
@@ -679,5 +911,5 @@ void * pthreadConection(void * sockClient){
     
     printf("=== Thread terminato per socket %d ===\n\n", sClient);
     close(sClient);
-    return NULL;
+    pthread_exit(NULL);
 }
