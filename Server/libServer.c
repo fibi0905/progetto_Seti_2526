@@ -693,7 +693,7 @@ unsigned int CONNECT(const char *msg){
 
 }
 
-unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
+unsigned int MESSAGE(const char *msg, const char idSender[ID_LEN]){
     //controllo che gli utenti siano amici e che esistano 
 
     if(findUser(idSender) == NOTFIND){
@@ -755,7 +755,7 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
 
 }
 
-unsigned int FREIREQ(const char *msg, char idSender[ID_LEN]){
+unsigned int FREIREQ(const char *msg, const char idSender[ID_LEN]){
     pthread_mutex_lock(&semNuser);
     if(nUser <= 1){
         if(DEB) printf("FREIREQ: non ci sono abbastanza persone\n");
@@ -803,6 +803,15 @@ unsigned int FREIREQ(const char *msg, char idSender[ID_LEN]){
 
    return OK;
 }
+
+/*==========LIST==========*/
+
+unsigned int LISTNUM(int sock);
+
+unsigned int LISTUSER(int sock, unsigned int nUs);
+
+/*========================*/
+
 
 /*-----------------------------------------------------*/
 
@@ -857,16 +866,18 @@ void * pthreadConection(void * sockClient){
         if(REGIST(buff,  client_tcp_addr) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            pthread_exit(NULL);
+            connesso = 0;
+        }
+        else{
+            simpleTCPmsg(sClient, WELCO);
+            
+            strncpy(id, buff+6, (ID_LEN-1));
+            id[(ID_LEN-1)] = '\0';
+            
+            if(DEB) printf("User [ %s ] registrato e conneso su socket: %d\n", id ,sClient);
         }
 
         
-        simpleTCPmsg(sClient, WELCO);
-        
-        strncpy(id, buff+6, (ID_LEN-1));
-        id[(ID_LEN-1)] = '\0';
-        
-        if(DEB) printf("User [ %s ] registrato e conneso su socket: %d\n", id ,sClient);
         
     }
 
@@ -878,16 +889,19 @@ void * pthreadConection(void * sockClient){
         if(CONNECT(buff) == NOTOK){
             simpleTCPmsg(sClient, GOBYE);
             close(sClient);
-            pthread_exit(NULL);
+            connesso = 0;
+        }
+        else{
+
+            simpleTCPmsg(sClient, HELLO);
+            
+            strncpy(id, buff+6, (ID_LEN-1));
+            id[(ID_LEN-1)] = '\0';
+            
+            if(DEB) printf("Connesione [ %s ] avvenuta con successo %d\n", id,sClient);
         }
 
         
-        simpleTCPmsg(sClient, HELLO);
-        
-        strncpy(id, buff+6, (ID_LEN-1));
-        id[(ID_LEN-1)] = '\0';
-        
-        if(DEB) printf("Connesione [ %s ] avvenuta con successo %d\n", id,sClient);
     }   
 
     else{
@@ -912,7 +926,6 @@ void * pthreadConection(void * sockClient){
        // if(DEB) printf("Thread [ socket: %d ] ha ricevuto:  %s\n", sClient, buff);
 
         strncpy(type, buff, 5);
-
         type[5]='\0';
 
         if(strcmp(type, "IQUIT") == 0){
@@ -920,6 +933,8 @@ void * pthreadConection(void * sockClient){
             simpleTCPmsg(sClient, GOBYE);
             break;
         }
+
+
 
         else if(strcmp(type, "MESS?") == 0){
             if(DEB) printf("Richiesta di invio di messaggio\n");
@@ -935,10 +950,16 @@ void * pthreadConection(void * sockClient){
 
         }
 
+
+
         else if(strcmp(type, "FLOO?") == 0){
             if(DEB) printf("Richiesta di invio di FLOO\n");
 
         }
+
+
+
+
 
         else if(strcmp(type, "FRIE?") == 0){
             if(DEB) printf("Richiesta di amicizia\n");
@@ -953,10 +974,15 @@ void * pthreadConection(void * sockClient){
             }
         }
 
+
+
+
         else if(strcmp(type, "LIST?") == 0){
             if(DEB) printf("Richiesta di lista utenti\n");
 
         }
+
+        
 
         else if(strcmp(type, "CONSU") == 0){
             if(DEB) printf("Richiesta di consultazione di flussi\n");
