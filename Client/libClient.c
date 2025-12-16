@@ -225,13 +225,37 @@ int newClient()
 
     // creo buffer e riempo con messaggio finale
     char msg[DIMBUF];
-    snprintf(msg, sizeof(msg), "REGIS %s %d %d+++", utente.id, utente.port, utente.mdp);
+    int offset = 0;
+
+    memcpy(msg + offset, "REGIS ", 6); 
+    offset += 6;    // Spostiamo offset avanti di 6
+    
+
+    // %-8s : scrive la stringa e aggiunge spazi alla fine fino ad arrivare a 8
+    snprintf(msg + offset, 9, "%-8s", utente.id); //uso 9 byte per '\0' dopodichè ci scrivo sopra
+    offset+= 8;
+    msg[offset] = ' '; 
+    offset += 1;
+
+    // %04d : usa 5 byte, l'ultimo per il '\0'
+    snprintf(msg + offset, 5, "%04d", utente.port);
+    offset += 4;
+    msg[offset] = ' '; 
+    offset += 1;
+
+    msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
+    msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
+    offset += 2;
+
+    //aggiungo "+++"
+    memcpy(msg + offset, "+++", 3); 
+    offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
 
     int nByte = 0; // contatore byte letti/scritti
 
-    nByte = write(descrTCP, msg, strlen(msg));
+    nByte = write(descrTCP, msg, offset);
     if (nByte <= 0) // controllo numero byte scritti
     {
         // byte scritto minori di 1, errore
@@ -427,7 +451,7 @@ int login()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int friend_request(int)
+int friend_request(char*)
 {
     // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     return NOTOK;

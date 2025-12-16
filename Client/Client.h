@@ -16,12 +16,13 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
+#include <endian.h>
 
 //TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;
 
 //INIZIO DEFINE ------------------------------------------------------------------------------------
-#define PORTA_UDP_CLIENT 20123  //porta udp ricezione client
+#define PORTA_UDP_CLIENT 9999  //porta udp ricezione client
 #define DEBUG false // controllo modalita verbose predefinita
 #define DIMBUF 256   //dimensione buffer
 //credenziali predefinite --------------------------------------------------------------------------
@@ -56,7 +57,7 @@ int newClient();
 int login();
 
 //effettua una richiesta d'amicizia ad un altro client, riceve come parametro id del client a cui sarà inviata la richiesta
-int friend_request(int);
+int friend_request(char*);
 
 // Gestisce spegnimento del client, il parametro desc è un vettore di grandezza 2 con in pos 0 il descrittore del socket udo
 // e in pos 1 il descrittore del socket tcp. Dato che non è possibile sapere se i socket da chiudere sarà solo il socket tcp, solo udp o entrambi
