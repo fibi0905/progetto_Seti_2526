@@ -198,14 +198,22 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     msg * newMsg  = (msg* ) malloc (sizeof(msg));
     if(newMsg == NULL) return NOTOK;
     strcpy(newMsg->id, idS);
-    strcpy(newMsg->value, value);
+    if(tip == MSG  || tip == FLOO){
+        strcpy(newMsg->value, value);
+    }
     newMsg->typeMSG = tip;
     newMsg->next = NULL;
 
     pthread_mutex_lock(&semNuser);
+
+
+
+
     if(listUser[pox].listMsg == NULL){
         listUser[pox].listMsg = newMsg;
         listUser[pox].nMsg++;
+       
+        
         pthread_mutex_unlock(&semNuser);
         return OK;
     }
@@ -219,6 +227,9 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     currMsg->next = newMsg;
     
     listUser[pox].nMsg++;
+    
+   
+
     pthread_mutex_unlock(&semNuser);
 
 
@@ -431,11 +442,11 @@ unsigned int sendUDPmessage(const char IDR[ID_LEN], typFlux tip){
 
     pthread_mutex_lock(&semList);
     
-    usingedIntTOlitEndian(1, numberLittelEndian);
+    usingedIntTOlitEndian(listUser[pox].nMsg, numberLittelEndian);
 
     pthread_mutex_unlock(&semList);
 
-    if(DEB) printf("numberLittelEndian[0]: %d\nnumberLittelEndian[1] %d\n", numberLittelEndian[0], numberLittelEndian[1]);
+    //if(DEB) printf("numberLittelEndian[0]: %d\nnumberLittelEndian[1] %d\n", numberLittelEndian[0], numberLittelEndian[1]);
 
 
     unsigned char mess[4];
@@ -456,7 +467,7 @@ unsigned int sendUDPmessage(const char IDR[ID_LEN], typFlux tip){
         char *client_ip = inet_ntoa(addrReciver.sin_addr);
         printf("sendUDPmessage: invio di messaggio a:\n");
         printf("    IP: %s\n", client_ip);
-        printf("    PORT: %u\n", htonl(addrReciver.sin_port));
+        printf("    PORT: %u\n", htons(addrReciver.sin_port));
         printf("    ID: %s\n", IDR);
     }
 
@@ -744,7 +755,54 @@ unsigned int MESSAGE(const char *msg, char idSender[ID_LEN]){
 
 }
 
+unsigned int FREIREQ(const char *msg, char idSender[ID_LEN]){
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1){
+        if(DEB) printf("FREIREQ: non ci sono abbastanza persone\n");
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    }
+    pthread_mutex_unlock(&semNuser);
 
+    /*
+        lunghezza: 
+            FRIE? (5) + (1) + ID (8) + "+++" (3) = 17 byte
+
+    */
+
+    if(strlen(msg) != 17){
+        if(DEB) printf("FREIREQ: Lunghezza del messaggio non coretta\n");
+        return NOTOK;
+    }
+
+    if(strncmp(msg, "FRIE? ", 6) != 0){
+        if(DEB) printf("FREIREQ: Messaggio non coretto\n");
+        return NOTOK;
+    }
+
+
+    char IDR [ID_LEN];
+
+    strncpy(IDR, msg+6, (ID_LEN-1));
+    IDR[(ID_LEN-1)] = '\0';
+
+    if(findUser(IDR) == NOTFIND){
+        if(DEB) printf("FREIREQ: User [ %s ] non trovato\n", IDR);
+        return NOTOK;
+    }
+
+    if(sendUDPmessage(IDR, FRIE_R) == NOTOK ){
+        if(DEB) printf("FREIREQ: notifica udp non avvenuta, non aggiungo alla lista\n");
+        return NOTOK;
+    }
+
+    if(addMSG(IDR, idSender, NULL, FRIE_R) == NOTFIND){
+        if(DEB) printf("FREIREQ: richiesta non aggiunta\n");
+        return NOTOK;
+    }
+
+   return OK;
+}
 
 /*-----------------------------------------------------*/
 
@@ -885,6 +943,14 @@ void * pthreadConection(void * sockClient){
         else if(strcmp(type, "FRIE?") == 0){
             if(DEB) printf("Richiesta di amicizia\n");
 
+            if(FREIREQ(buff, id) == NOTOK){
+                if(DEB) printf("Richiesta non inviata\n");
+                simpleTCPmsg(sClient, FRIE_NOTOK);
+            }
+            else{
+                if(DEB) printf("Richiaesta inviata\n");
+                simpleTCPmsg(sClient, FRIE_OK);
+            }
         }
 
         else if(strcmp(type, "LIST?") == 0){

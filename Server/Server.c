@@ -20,7 +20,8 @@ int main (int argc, char * argv[]){
             DEBUG=1;
         }
         else{
-            printf("Parametro non riconosciuto, Ricordo \"-d\" per avviare modalità Debug");
+            printf("Parametro non riconosciuto, Ricordo \"-d\" per avviare modalità Debug\n");
+            return EXIT_FAILURE;
         }
     }
     
