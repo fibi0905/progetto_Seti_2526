@@ -69,32 +69,32 @@ int main(const int argc, const char *args[])
         switch (sceltaUtente)
         {
         case 1:
-
-            err = new_Client();
-            if (err != OK)
             {
-                printf("registrazione fallita\n");
-                errprimoAccesso = true;
+                err = new_Client(); //chiamata newClient
+                if (err != OK)
+                {
+                    printf("registrazione fallita\n");
+                    errprimoAccesso = true;
+                }
+                else
+                    printf("registrazione riuscita\n");
+                break;
             }
-            else
-                printf("registrazione riuscita\n");
-            break;
-
         case 2:
-
-            err = login();
-            if (err != OK)
             {
-                printf("accesso fallito\n");
-                errprimoAccesso = true;
+                err = login();  //chiamata login
+                if (err != OK)
+                {
+                    printf("accesso fallito\n");
+                    errprimoAccesso = true;
+                }
+                else
+                    printf("accesso riuscito\n");
+                break;
             }
-            else
-                printf("accesso riuscito\n");
-            break;
-
         case 3:
-
-            // cattura input
+            {
+                // cattura input
             char idClientFriendRequest[ID_LEN]; // id client a cio inviare la richiesta d'amicizia
 
             // input/outout
@@ -102,35 +102,52 @@ int main(const int argc, const char *args[])
             scanf("%s", idClientFriendRequest);
 
             // verifica errore
-            err = friend_request(idClientFriendRequest);
+            err = friend_request(idClientFriendRequest);    //chiamata friendRequest
             if (err != OK)
                 printf("invio richiesta d'amicizia fallito\n");
             else
                 printf("invio richiesta d'amicizia riuscito\n");
             break;
-
+            }
         case 4:
+            {
+                // cattura input
+                char idClintDestination[ID_LEN]; // id client a cui inviare la richiesta
+                char message[201];               // buffer del messaggio
+    
+                // input/outout
+                printf("inserisci l'username del client di cui desideri diventare amico\n");
+                scanf("%s", idClintDestination);
+    
+                // input/outout
+                printf("inserisci il messaggio da inviare:\n");
+                scanf("%s", message);
+    
+                err = send_Message(idClintDestination, message);    //chiamata sendMessage
+                if (err != OK)
+                    printf("invio messaggio fallito\n");
+                else
+                    printf("invio messaggio riuscito\n");
+                break;
+            }
+        case 5:
+            {
+                char message[201];               // buffer del messaggio
 
-            // cattura input
-            char idClintDestination[ID_LEN]; // id client a cui inviare la richiesta
-            char message[201];               // buffer del messaggio
+                 // input/outout
+                printf("inserisci il messaggio da inviare:\n");
+                scanf("%s", message);
+    
 
-            // input/outout
-            printf("inserisci l'username del client di cui desideri diventare amico\n");
-            scanf("%s", idClintDestination);
-
-            // input/outout
-            printf("inserisci il messaggio da inviare:\n");
-            scanf("%s", message);
-
-            err = send_Message(idClintDestination, message);
-            if (err != OK)
-                printf("invio richiesta d'amicizia fallito\n");
-            else
-                printf("invio richiesta d'amicizia riuscito\n");
-            break;
-
+                err = flood( message);  //chiamata flood
+                if (err != OK)
+                    printf("invio richiesta flood fallito\n");
+                else
+                    printf("invio richiesta flood riuscito\n");
+                break;
+            }
         case 8:
+        {
             err = client_shutdown();
             if (err != OK)
             {
@@ -140,12 +157,13 @@ int main(const int argc, const char *args[])
             else
                 printf("disconnessione riuscita\n");
             return OK;
-
+        } 
         default:
+            {
+                printf("scelta inserita non valida, inserisci un numero da 1 a 8\n");
 
-            printf("scelta inserita non valida, inserisci un numero da 1 a 8\n");
-
-            break;
+                break;
+            } 
         }
 
         primaVolta = false;

@@ -721,6 +721,102 @@ int send_Message(char* idDestination, char* mess){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int flood(char* mess){
+    debug("Clinet: inizio  trasmissione  flood"); // debug
+    debug("Client: invio messaggio FLOO?\n");        // debug
+
+    // creo buffer e riempo con messaggio finale
+    char msg[DIMBUF];
+    int offset = 0;
+
+    memcpy(msg + offset, "FLOO? ", 6);
+    offset += 6; // Spostiamo offset avanti di 6
+
+    // inserisco mess, massimo 200 caratteri + '\0'
+    snprintf(msg + offset, 201, "%-8s ", mess); 
+    offset += 200;
+
+    // aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4);
+    offset += 3;
+
+    debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+    int nByte = 0; // contatore byte letti/scritti
+
+    nByte = write(descrTCP, msg, offset);
+    if (nByte <= 0) // controllo numero byte scritti
+    {
+        // byte scritto minori di 1, errore
+
+        debug("Client: invio messsaggio FLOO? fallito, scritti %d\n", nByte); // debug
+
+        return NOTOK;
+        // TODO--------------------------------------
+    }
+
+    // byte scritti sufficienti
+
+    debug("Client: lettura risposta server\n"); // debug
+
+    // lettura risposta server e controllo numero di byte letti
+    nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+    if (nByte != 8)
+    {
+        // byte letti errati
+
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+
+        // TODO--------------------------------------------------------------------------------------------------
+    }
+    msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+    debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+    debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+
+    if (strcmp(msg, "FLOO>+++") == 0) // se server trasmette il messaggio flood
+    {
+        //invio riuscito
+
+        if (se_BufferVuoto(descrTCP))
+        {
+            debug("Client: invio messaggio flood avvenuta con successo\n"); // debug
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    } 
+
+    // trasmissione fallita
+
+    debug("Client: trasmissione messaggio fallito\n"); // debug
+
+    debug("Client: ricezione messaggio anomala\n"); // debug
+
+    svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+    debug("Client: buffer svuotato correttamente\n"); // debug
+
+    return NOTOK;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // NON TERMINATA
 int client_shutdown()
 {
