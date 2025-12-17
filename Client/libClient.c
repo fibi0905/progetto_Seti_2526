@@ -249,7 +249,7 @@ int newClient()
     offset += 2;
 
     //aggiungo "+++"
-    memcpy(msg + offset, "+++", 3); 
+    memcpy(msg + offset, "+++\0", 4); 
     offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
@@ -316,10 +316,13 @@ int newClient()
     else if (strcmp(msg, "GOBYE+++") == 0)
     {
         // registrazione rifiutata
-        if (seBufferVuoto(descrTCP))
+        if (seBufferVuoto(descrTCP)){
             debug("Client: registrazione rifiutata con successo\n"); // debug
+            return NOTOK;
+        }
 
         debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+        debug("Client: ricezione messaggio anomala\n");     //debug
 
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
@@ -359,7 +362,6 @@ int login()
     // creo buffer e riempo con messaggio finale
     char msg[DIMBUF];
     int offset = 0;
-    //snprintf(msg, sizeof(msg), "CONNE %s %d+++", utente.id, utente.mdp);
 
     memcpy(msg + offset, "CONNE ", 6); 
     offset += 6;    // Spostiamo offset avanti di 6
@@ -382,14 +384,12 @@ int login()
     offset += 2;
 
     //aggiungo "+++"
-    memcpy(msg + offset, "+++", 3); 
+    memcpy(msg + offset, "+++\0", 4); 
     offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
 
     int nByte = 0; // contatore byte letti/scritti
-
-    debug("Client: invio messsaggio CONNE riuscito, inviati %d\n", nByte); // debug
 
     nByte = write(descrTCP, msg, offset);
     if (nByte <= 0) // controllo numero byte scritti
@@ -435,8 +435,7 @@ int login()
     if (strcmp(msg, "HELLO+++") == 0) // se accetta login
     {
 
-        if (seBufferVuoto(descrTCP))
-        {
+        if (seBufferVuoto(descrTCP)){
             debug("Client: login avvenuta con successo\n"); // debug
             return OK;
         }
@@ -453,8 +452,126 @@ int login()
     {
         // login rifiutata
 
-        if (seBufferVuoto(descrTCP))
+        if (seBufferVuoto(descrTCP)){
             debug("Client: login rifiutata con successo\n"); // debug
+            return NOTOK;
+        }
+        
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+            
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+            
+        debug("Client: buffer svuotato correttamente\n"); // debug
+        
+
+        return NOTOK;
+    }
+
+    // login fallita
+
+    debug("Client: login fallita\n"); // debug
+    debug("Client: ricezione messaggio anomala\n");     //debug
+
+    svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+    debug("Client: buffer svuotato correttamente\n"); // debug
+
+    return NOTOK;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//NON TERMIANTA
+int friend_request(char* requestId)
+{
+    debug("Clinet: inizio richiesta d'amicizia\n"); //debug
+
+    debug("Client: invio messaggio FRIE?\n");
+
+    // creo buffer e riempo con messaggio finale
+    char msg[DIMBUF];
+    int offset = 0;
+
+    memcpy(msg + offset, "FRIE? ", 6); 
+    offset += 6;    // Spostiamo offset avanti di 6
+
+    // %-8s : scrive la stringa e aggiunge spazi alla fine fino ad arrivare a 8
+    snprintf(msg + offset, 9, "%-8s", requestId); //uso 9 byte per '\0' dopodichè ci scrivo sopra
+    offset+= 8;
+
+    //aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4); 
+    offset += 3;
+
+    debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+    int nByte = 0; // contatore byte letti/scritti
+
+    nByte = write(descrTCP, msg, offset);
+    if (nByte <= 0) // controllo numero byte scritti
+    {
+        // byte scritto minori di 1, errore
+
+        debug("Client: invio messsaggio FRIE? fallito, scritti %d\n", nByte); // debug
+
+        return NOTOK;
+        // TODO--------------------------------------
+    }
+
+    debug("Client: invio messsaggio FRIE? riuscito, inviati %d\n", nByte); // debug
+
+    // byte scritti sufficienti
+
+    debug("Client: lettura risposta server\n"); // debug
+
+    // lettura risposta server e controllo numero di byte letti
+    nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+    if (nByte != 8)
+    {
+        // byte letti errati
+
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+
+        // TODO--------------------------------------------------------------------------------------------------
+    }
+    msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+    debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+    debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+    
+    if (strcmp(msg, "FRIE>+++") == 0) // se server trasmette richiesta
+    {
+
+        if (seBufferVuoto(descrTCP))
+        {
+            debug("Client: trasmissione richiesta d'amicizia avvenuta con successo\n"); // debug
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+    else if (strcmp(msg, "FRIE<+++") == 0)
+    {
+        // id sconosciuto
+
+        if (seBufferVuoto(descrTCP)){
+            debug("Client: trasmissione richiesta d'amicizia rifiutata, id sconosciuto\n"); // debug
+            return NOTOK;
+        }
 
         debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
 
@@ -465,23 +582,15 @@ int login()
         return NOTOK;
     }
 
-    // login fallita
+    // trasmissione fallita
 
     debug("Client: login fallita\n"); // debug
+
+    debug("Client: ricezione messaggio anomala\n");     //debug
 
     svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
     debug("Client: buffer svuotato correttamente\n"); // debug
-
-    return NOTOK;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int friend_request(char* id)
-{
-    debug("Clinet: inizio richiesta d'amicizia\n"); //debug
-
-    
 
     return NOTOK;
 }
