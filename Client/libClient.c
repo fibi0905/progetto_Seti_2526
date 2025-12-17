@@ -227,29 +227,28 @@ int newClient()
     char msg[DIMBUF];
     int offset = 0;
 
-    memcpy(msg + offset, "REGIS ", 6); 
-    offset += 6;    // Spostiamo offset avanti di 6
-    
+    memcpy(msg + offset, "REGIS ", 6);
+    offset += 6; // Spostiamo offset avanti di 6
 
     // %-8s : scrive la stringa e aggiunge spazi alla fine fino ad arrivare a 8
-    snprintf(msg + offset, 9, "%-8s", utente.id); //uso 9 byte per '\0' dopodichè ci scrivo sopra
-    offset+= 8;
-    msg[offset] = ' '; 
+    snprintf(msg + offset, 9, "%-8s", utente.id); // uso 9 byte per '\0' dopodichè ci scrivo sopra
+    offset += 8;
+    msg[offset] = ' ';
     offset += 1;
 
     // %04d : usa 5 byte, l'ultimo per il '\0'
     snprintf(msg + offset, 5, "%04d", utente.port);
     offset += 4;
-    msg[offset] = ' '; 
+    msg[offset] = ' ';
     offset += 1;
 
-    //aggiungo al messaggio la password in little endian
+    // aggiungo al messaggio la password in little endian
     msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
     msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
     offset += 2;
 
-    //aggiungo "+++"
-    memcpy(msg + offset, "+++\0", 4); 
+    // aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4);
     offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
@@ -316,13 +315,14 @@ int newClient()
     else if (strcmp(msg, "GOBYE+++") == 0)
     {
         // registrazione rifiutata
-        if (seBufferVuoto(descrTCP)){
+        if (seBufferVuoto(descrTCP))
+        {
             debug("Client: registrazione rifiutata con successo\n"); // debug
             return NOTOK;
         }
 
         debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
-        debug("Client: ricezione messaggio anomala\n");     //debug
+        debug("Client: ricezione messaggio anomala\n"); // debug
 
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
@@ -363,28 +363,28 @@ int login()
     char msg[DIMBUF];
     int offset = 0;
 
-    memcpy(msg + offset, "CONNE ", 6); 
-    offset += 6;    // Spostiamo offset avanti di 6
+    memcpy(msg + offset, "CONNE ", 6);
+    offset += 6; // Spostiamo offset avanti di 6
 
     // %-8s : scrive la stringa e aggiunge spazi alla fine fino ad arrivare a 8
-    snprintf(msg + offset, 9, "%-8s", utente.id); //uso 9 byte per '\0' dopodichè ci scrivo sopra
-    offset+= 8;
-    msg[offset] = ' '; 
+    snprintf(msg + offset, 9, "%-8s", utente.id); // uso 9 byte per '\0' dopodichè ci scrivo sopra
+    offset += 8;
+    msg[offset] = ' ';
     offset += 1;
 
     // %04d : usa 5 byte, l'ultimo per il '\0'
     snprintf(msg + offset, 5, "%04d", utente.port);
     offset += 4;
-    msg[offset] = ' '; 
+    msg[offset] = ' ';
     offset += 1;
 
-    //aggiungo al messaggio la password in little endian
+    // aggiungo al messaggio la password in little endian
     msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
     msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
     offset += 2;
 
-    //aggiungo "+++"
-    memcpy(msg + offset, "+++\0", 4); 
+    // aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4);
     offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
@@ -435,7 +435,8 @@ int login()
     if (strcmp(msg, "HELLO+++") == 0) // se accetta login
     {
 
-        if (seBufferVuoto(descrTCP)){
+        if (seBufferVuoto(descrTCP))
+        {
             debug("Client: login avvenuta con successo\n"); // debug
             return OK;
         }
@@ -452,25 +453,25 @@ int login()
     {
         // login rifiutata
 
-        if (seBufferVuoto(descrTCP)){
+        if (seBufferVuoto(descrTCP))
+        {
             debug("Client: login rifiutata con successo\n"); // debug
             return NOTOK;
         }
-        
+
         debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
-            
+
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
-            
+
         debug("Client: buffer svuotato correttamente\n"); // debug
-        
 
         return NOTOK;
     }
 
     // login fallita
 
-    debug("Client: login fallita\n"); // debug
-    debug("Client: ricezione messaggio anomala\n");     //debug
+    debug("Client: login fallita\n");               // debug
+    debug("Client: ricezione messaggio anomala\n"); // debug
 
     svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
@@ -480,26 +481,25 @@ int login()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//NON TERMIANTA
-int friend_request(char* requestId)
+// NON TERMIANTA
+int friend_request(char *requestId)
 {
-    debug("Clinet: inizio richiesta d'amicizia\n"); //debug
-
-    debug("Client: invio messaggio FRIE?\n");
+    debug("Clinet: inizio richiesta d'amicizia\n"); // debug
+    debug("Client: invio messaggio FRIE?\n");       // debug
 
     // creo buffer e riempo con messaggio finale
     char msg[DIMBUF];
     int offset = 0;
 
-    memcpy(msg + offset, "FRIE? ", 6); 
-    offset += 6;    // Spostiamo offset avanti di 6
+    memcpy(msg + offset, "FRIE? ", 6);
+    offset += 6; // Spostiamo offset avanti di 6
 
     // %-8s : scrive la stringa e aggiunge spazi alla fine fino ad arrivare a 8
-    snprintf(msg + offset, 9, "%-8s", requestId); //uso 9 byte per '\0' dopodichè ci scrivo sopra
-    offset+= 8;
+    snprintf(msg + offset, 9, "%-8s", requestId); // uso 9 byte per '\0' dopodichè ci scrivo sopra
+    offset += 8;
 
-    //aggiungo "+++"
-    memcpy(msg + offset, "+++\0", 4); 
+    // aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4);
     offset += 3;
 
     debug("Client: messaggio:\"%s\"\n", msg); // debug
@@ -546,7 +546,7 @@ int friend_request(char* requestId)
 
     debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
     debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
-    
+
     if (strcmp(msg, "FRIE>+++") == 0) // se server trasmette richiesta
     {
 
@@ -568,7 +568,8 @@ int friend_request(char* requestId)
     {
         // id sconosciuto
 
-        if (seBufferVuoto(descrTCP)){
+        if (seBufferVuoto(descrTCP))
+        {
             debug("Client: trasmissione richiesta d'amicizia rifiutata, id sconosciuto\n"); // debug
             return NOTOK;
         }
@@ -586,7 +587,7 @@ int friend_request(char* requestId)
 
     debug("Client: login fallita\n"); // debug
 
-    debug("Client: ricezione messaggio anomala\n");     //debug
+    debug("Client: ricezione messaggio anomala\n"); // debug
 
     svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
@@ -597,9 +598,91 @@ int friend_request(char* requestId)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // NON TERMINATA
-void client_shutdown()
+int client_shutdown()
 {
+    debug("Clinet: inizio spegnimento e disconnessione\n"); // debug
+    debug("Client: invio messaggio IQUIT\n");               // debug
+
+    // creo buffer e riempo con messaggio finale
+    char msg[DIMBUF];
+    int offset = 0;
+
+    memcpy(msg + offset, "IQUIT+++\0", 9);
+    offset += 8; // Spostiamo offset avanti di 8
+
+    debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+    int nByte = 0; // contatore byte letti/scritti
+
+    nByte = write(descrTCP, msg, offset);
+    if (nByte <= 0) // controllo numero byte scritti
+    {
+        // byte scritto minori di 1, errore
+
+        debug("Client: invio messsaggio IQUIT fallito, scritti %d\n", nByte); // debug
+
+        return NOTOK;
+        // TODO--------------------------------------
+    }
+
+    debug("Client: invio messsaggio IQUIT riuscito, inviati %d\n", nByte); // debug
+
+    // byte scritti sufficienti
+
+    // lettura risposta server e controllo numero di byte letti
+    nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+    if (nByte != 8)
+    {
+        // byte letti errati
+
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+
+        // TODO--------------------------------------------------------------------------------------------------
+    }
+    msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+    debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+    debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+
+    if (strcmp(msg, "GOBYE+++") == 0) // se server "accetta" disconnessione
+    {
+
+        if (seBufferVuoto(descrTCP))
+        {
+            debug("Client: trasmissione richiesta d'amicizia avvenuta con successo\n"); // debug
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+
+    // trasmissione fallita
+
+    debug("Client: disconessione fallita\n"); // debug
+
+    debug("Client: ricezione messaggio anomala\n"); // debug
+
+    svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+    debug("Client: buffer svuotato correttamente\n"); // debug
+
     close(descrTCP);
     close(descrUDP);
+    return NOTOK;
     // TODOOOOOOOO-----------------------------------------------------------
 }

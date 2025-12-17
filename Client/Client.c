@@ -104,6 +104,13 @@ int main(const int argc, const char* args[])
             break;
 
         case 8 :
+            err = client_shutdown();
+            if (err != OK){
+                printf("disconnessione fallita\n");
+                return NOTOK;
+            }
+            else
+                printf("disconnessione riuscita\n");            
             return OK;
 
         default:
