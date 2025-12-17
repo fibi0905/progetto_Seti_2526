@@ -1,7 +1,6 @@
 #include "utility.h"
 #include <stdio.h>
 
-
 unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]){
     // Converte la password da little-endian a unsigned int
     return mdpBYTE[0] | (mdpBYTE[1] << 8);
