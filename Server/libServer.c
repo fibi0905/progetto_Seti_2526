@@ -245,26 +245,26 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
 
 //rimuove solo il il primo messaggio, dato che quando si fa consult, si ritorna solo il primo messaggio
 //oltre a rimuovere mi da anche il valore del primo messaggio, inserito al interno di msgRM -> messaggio rimosso  
-unsigned int rmMSG(const char idD [ID_LEN], msg *msgRM){
-    pthread_mutex_lock(&semNuser);
-    if(nUser <1) {
-        pthread_mutex_unlock(&semNuser);
-        return NOTOK;
-    } 
-    pthread_mutex_unlock(&semNuser);
-
+/*
+    NOTFIND -> utente non trovato
+    NOTOK -> non ha flussi
+*/
+int rmMSG(const char idD [ID_LEN], msg *msgRM){
     unsigned int pox;
-    if((pox = findUser(idD)) == NOTFIND) return NOTOK;
+    if((pox = findUser(idD)) == NOTFIND) return NOTFIND;
 
     pthread_mutex_lock(&semList);
 
-    if( listUser[pox].listMsg == NULL) {
+    if( listUser [pox].nMsg == 0) {
+        listUser[pox].listMsg = NULL;
         pthread_mutex_unlock(&semList);
         return NOTOK;
     }
 
     msgRM = listUser[pox].listMsg;
     listUser[pox].listMsg = msgRM->next;
+
+    listUser[pox].nMsg--;
 
     pthread_mutex_unlock(&semList);
 
@@ -874,6 +874,21 @@ unsigned int LISTUSER(int sock){
 }
 
 /*========================*/
+
+
+/*==========CONSU==========*/
+
+unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
+    msg Flux;
+
+    if(rmMSG()){
+
+    }
+
+}
+
+/*=========================*/
+
 
 
 /*-----------------------------------------------------*/
