@@ -70,7 +70,7 @@ int main(const int argc, const char *args[])
         {
         case 1:
             {
-                err = new_Client(); //chiamata newClient
+                err = new_client(); //chiamata newClient
                 if (err != OK)
                 {
                     printf("registrazione fallita\n");
@@ -123,7 +123,7 @@ int main(const int argc, const char *args[])
                 printf("inserisci il messaggio da inviare:\n");
                 scanf("%s", message);
     
-                err = send_Message(idClintDestination, message);    //chiamata sendMessage
+                err = send_message(idClintDestination, message);    //chiamata sendMessage
                 if (err != OK)
                     printf("invio messaggio fallito\n");
                 else
@@ -146,6 +146,21 @@ int main(const int argc, const char *args[])
                     printf("invio richiesta flood riuscito\n");
                 break;
             }
+        case 6 :
+        {
+            char listClient[DIMBUF];               // buffer della lista dei clint
+
+            err = list_client(listClient);  //chiamata listClient
+            if (err != OK)
+                printf("invio richiesta numero client fallito\n");
+            else
+                printf("invio richiesta numero client riuscito\n");
+
+            // outout
+            printf("id dei client:%s\n", listClient);
+
+            break;
+        }
         case 8:
         {
             err = client_shutdown();

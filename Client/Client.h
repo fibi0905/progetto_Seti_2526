@@ -15,14 +15,15 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
+#include <regex.h>
 
 // TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;
 
 // INIZIO DEFINE ------------------------------------------------------------------------------------
-//#define PORTA_UDP_CLIENT 9999 // porta udp ricezione client
-#define DEBUG false           // controllo modalita verbose predefinita
-#define DIMBUF 512            // dimensione buffer
+// #define PORTA_UDP_CLIENT 9999 // porta udp ricezione client
+#define DEBUG false // controllo modalita verbose predefinita
+#define DIMBUF 1024  // dimensione buffer
 // credenziali predefinite --------------------------------------------------------------------------
 #define PASSWORD_STD 0
 #define ID_STD "Ferraro"
@@ -49,7 +50,7 @@ int startup();
 
 // Effettua la registrazione di un nuovo client al server
 // ritorn OK o NOTOK
-int new_Client();
+int new_client();
 
 // effettua l'accesso con le credenziali salvate se disponibili, altrimenti le richiede all'utente
 int login();
@@ -58,10 +59,13 @@ int login();
 int friend_request(char *);
 
 // effettua la trasmissione del messaggio, riceve id del cliente di destinazione e il testo del messaggio
-int send_Message(char*, char*);
+int send_message(char *, char *);
 
-// effettua una trasmissione del messaggio, che riceve per parametri,  tutti i suoi amici e agli amici dei suoi amici
-int flood(char*);
+// effettua una trasmissione del messaggio, che riceve per parametro,  tutti i suoi amici e agli amici dei suoi amici
+int flood(char *);
+
+// permette di ricevere nel parametro passato la lista di tutti i client connessi, separata da ,
+int list_client(char *);
 
 // Gestisce spegnimento del client, il parametro desc è un vettore di grandezza 2 con in pos 0 il descrittore del socket udo
 // e in pos 1 il descrittore del socket tcp. Dato che non è possibile sapere se i socket da chiudere sarà solo il socket tcp, solo udp o entrambi
