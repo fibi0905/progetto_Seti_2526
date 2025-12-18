@@ -880,10 +880,123 @@ unsigned int LISTUSER(int sock){
 
 unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
     msg Flux;
+    unsigned int ret = rmMSG(ID, &Flux) ;
 
-    if(rmMSG()){
-
+    if(ret == NOTOK ){
+        if(DEB) printf("CONUSLT: utente non ha flussi\n");
+        simpleTCPmsg(sock, NOCON);
+        return OK;
     }
+
+    if(ret ==  NOTFIND){
+        if(DEB) printf("CONUSLT: utente non trovato\n");
+        return NOTOK;
+    }
+
+    /*
+        Lunghezza:
+            [218] -> SSEM> (5) + (1) + ID (8) + (1) + MESS(200) +"+++" (3)
+
+    */
+
+    char msgSend [MAX_TCP_MESAGGE];
+
+    switch (Flux.typeMSG){
+        case MSG:
+            sprintf(msgSend, "SSEM> %s %s+++", Flux.id, Flux.value);
+            if(DEB) printf("CONUSLT: flusso di tipo MSG invio il seguente messaggio: \"%s\"\n", msgSend);
+            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo MSG non inviato\n");
+                return NOTOK;
+            }
+
+            return OK;
+
+        break;
+        
+        case FLOO:
+            sprintf(msgSend, "OOLF> %s %s+++", Flux.id, Flux.value);
+            if(DEB) printf("CONUSLT: flusso di tipo FLOO invio il seguente messaggio: \"%s\"\n", msgSend);
+            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FLOO non inviato\n");
+                return NOTOK;
+            }
+
+            return OK;
+
+
+
+        break;
+
+        default:
+            break;
+    }
+
+    if(DEB) printf("CONUSLT: flusso è inerente ad amicizia\n");
+
+    char buff[MAX_TCP_MESAGGE];
+
+    switch (Flux.typeMSG)
+    {
+        case FRIE_Req:
+            printf(msgSend, "EIRF> %s+++", Flux.id);
+            if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req invio il seguente messaggio: \"%s\"\n", msgSend);
+            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req non inviato\n");
+                return NOTOK;
+            }
+
+            if(readTCPmessage (sock, buff, sizeof(buff)) == NOTOK){
+                if(DEB) printf("CONUSLT: risoposta alla richiesta di amicizia non coretta\n");
+                return NOTOK;
+            }
+
+            typFlux respons;
+            if(strcmp(buff, "OKIRF+++") == 0){
+                //richiesta di amaicizia accetata   
+                if(DEB) printf("CONUSLT: richiesta di amicizia accettata\n");
+                respons = FRIE_A; 
+
+            }
+            else if (strcmp(buff, "NOKRF+++") == 0){
+                //richiesta di amiciza non accettata
+                if(DEB) printf("CONUSLT: richiesta di amicizia rifiutata\n");
+                respons = FRIE_R; 
+
+            }  
+            else{
+                if(DEB) printf("CONUSLT: risoposta alla richiesta di amicizia non coretta\n");
+                return NOTOK;
+            }
+
+            simpleTCPmsg(sock, ACKRF);
+            sendUDPmessage(Flux.id , respons);
+            addMSG(Flux.id, ID, NULL, respons);
+
+            return OK;
+
+        break;
+
+        case FRIE_A:
+            //RICHIESTA ACCETTATA
+        break;
+        
+        case FRIE_R:
+            //RICHIESTA RIFIUTATA
+
+        break;
+
+        default:
+            break;
+    }
+
+
 
 }
 
