@@ -985,11 +985,32 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
 
         case FRIE_A:
             //RICHIESTA ACCETTATA
+            if(DEB) printf("CONUSLT: amicizia accettata\n");
+
+            sprintf(msgSend, "FRIEN %s+++", Flux.id);
+            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req non inviato\n");
+                return NOTOK;
+            }
+
+            return OK;
         break;
         
         case FRIE_R:
             //RICHIESTA RIFIUTATA
+            if(DEB) printf("CONUSLT: amicizia rifiutata\n");
 
+            sprintf(msgSend, "NOFRI %s+++", Flux.id);
+            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req non inviato\n");
+                return NOTOK;
+            }
+
+            return OK;
         break;
 
         default:
@@ -997,7 +1018,7 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
     }
 
 
-
+    return OK;
 }
 
 /*=========================*/
@@ -1188,6 +1209,12 @@ void * pthreadConection(void * sockClient){
 
         else if(strcmp(type, "CONSU") == 0){
             if(DEB) printf("Richiesta di consultazione di flussi\n");
+
+            if(CONUSLT(sClient, id) == NOTOK){
+                if(DEB) printf ("Conslutazione fallita su Socket %d\n", sClient);
+            }
+
+            if(DEB) printf("Consutazione avventua con successo\n");
 
         }
 
