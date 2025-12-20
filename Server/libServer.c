@@ -178,6 +178,8 @@ unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
 
     strcpy(listUser[pox].listFri[nFreind], idS);
     listUser[pox].nFri ++;
+
+    //if(DEB) printf("addFriend: \n   listUser[pox].nFri: %d\n   listUser[pox].listFri[nFreind]: %s", listUser[pox].nFri, listUser[pox].listFri[nFreind]);
     pthread_mutex_unlock(&semList);
 
 
@@ -187,7 +189,7 @@ unsigned int addFrined (const char idD [ID_LEN], const char idS [ID_LEN]){
 
 
 //aggiungo ad idD (idDestinatario) il messaggio che arriva da idS (idSorgente)
-unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip){
+unsigned int addMSG ( char idD [ID_LEN], const char idS[ID_LEN], const char value[MAX_LEN], typFlux tip){
     pthread_mutex_lock(&semNuser);
     if(nUser <1) {
         pthread_mutex_unlock(&semNuser);
@@ -203,6 +205,9 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     //Creazione messaggio 
     msg * newMsg  = (msg* ) malloc (sizeof(msg));
     if(newMsg == NULL) return NOTOK;
+
+    if(DEB) printf("addMsg: idSender %s\n", idS);
+
     strcpy(newMsg->id, idS);
     if(tip == MSG  || tip == FLOO){
         strcpy(newMsg->value, value);
@@ -249,7 +254,7 @@ unsigned int addMSG (const char idD [ID_LEN], const char idS[ID_LEN], const char
     NOTFIND -> utente non trovato
     NOTOK -> non ha flussi
 */
-int rmMSG(const char idD [ID_LEN], msg *msgRM){
+int rmMSG(const char idD [ID_LEN], msg **msgRM){
     unsigned int pox;
     if((pox = findUser(idD)) == NOTFIND) return NOTFIND;
 
@@ -261,8 +266,8 @@ int rmMSG(const char idD [ID_LEN], msg *msgRM){
         return NOTOK;
     }
 
-    msgRM = listUser[pox].listMsg;
-    listUser[pox].listMsg = msgRM->next;
+    *msgRM = listUser[pox].listMsg;
+    listUser[pox].listMsg = (*msgRM)->next;
 
     listUser[pox].nMsg--;
 
@@ -702,10 +707,12 @@ unsigned int CONNECT(const char *msg){
 unsigned int MESSAGE(const char *msg, const char idSender[ID_LEN]){
     //controllo che gli utenti siano amici e che esistano 
 
-    if(findUser(idSender) == NOTFIND){
-        if(DEB) printf("MESSAGE: User sendere not fund\n");
-        return NOTOK;
-    }
+    // if(findUser(idSender) == NOTFIND){
+    //     if(DEB) printf("MESSAGE: User sendere not fund\n");
+    //     return NOTOK;
+    // }
+
+ 
 
     //controllo che ci siano alemno due user 
     pthread_mutex_lock(&semNuser);
@@ -739,23 +746,31 @@ unsigned int MESSAGE(const char *msg, const char idSender[ID_LEN]){
     strncpy(IDR, msg+6, (ID_LEN-1));
     IDR[(ID_LEN-1)] = '\0';
 
-    char contMSG [MAX_LEN];
-    size_t byteMSG = (strlen(msg) - 18); 
 
-    strncpy(contMSG, msg+15, byteMSG);
-
-    if(DEB) printf("il messaggio da inviare \"%s\"  ed è lungo %lu byte\n", contMSG,byteMSG);
-
-    if(sendUDPmessage(IDR, MSG) == NOTOK){
-        if(DEB) printf("MESSAGE: la notifica non è stata inviata e quindi non è stato aggiunto il messaggio\n");
+    if(friendAS(IDR, idSender) == NOTOK){
+        if(DEB) printf("MESSAGE: il messaggio non è stato inviato perché non amico\n");
         return NOTOK;
     }
 
-    
+    char contMSG [MAX_LEN];
+    unsigned int byteMSG = (strlen(msg) - 18); 
+
+    strncpy(contMSG, msg+15, byteMSG);
+    contMSG[byteMSG] = '\0';
+
+    if(DEB) printf("MESSAGE: il messaggio da inviare \"%s\"  ed è lungo %u byte\n", contMSG,byteMSG);
+
     if(addMSG(IDR, idSender, contMSG, MSG) == NOTOK){
         if(DEB) printf("MESSAGE: il messaggio non è stato aggiunto alla lista di %s\n", IDR);
         return NOTOK;
     }
+
+    if(sendUDPmessage(IDR, MSG) == NOTOK){
+        if(DEB) printf("MESSAGE: la notifica non è stata inviata\n");
+        return NOTOK;
+    }
+
+    
 
     return OK;
 
@@ -796,16 +811,17 @@ unsigned int FREIREQ(const char *msg, const char idSender[ID_LEN]){
         if(DEB) printf("FREIREQ: User [ %s ] non trovato\n", IDR);
         return NOTOK;
     }
+    
+    if(addMSG(IDR, idSender, NULL, FRIE_Req) == NOTFIND){
+        if(DEB) printf("FREIREQ: richiesta non aggiunta\n");
+        return NOTOK;
+    }
 
     if(sendUDPmessage(IDR, FRIE_Req) == NOTOK ){
         if(DEB) printf("FREIREQ: notifica udp non avvenuta, non aggiungo alla lista\n");
         return NOTOK;
     }
 
-    if(addMSG(IDR, idSender, NULL, FRIE_Req) == NOTFIND){
-        if(DEB) printf("FREIREQ: richiesta non aggiunta\n");
-        return NOTOK;
-    }
 
    return OK;
 }
@@ -879,7 +895,7 @@ unsigned int LISTUSER(int sock){
 /*==========CONSU==========*/
 
 unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
-    msg Flux;
+    msg *Flux= NULL;
     unsigned int ret = rmMSG(ID, &Flux) ;
 
     if(ret == NOTOK ){
@@ -899,11 +915,38 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
 
     */
 
+    if(DEB){
+        printf("\n\n==========Flusso per %s==========\n", ID);
+        printf("     fluss.type: ");
+        if(Flux->typeMSG == MSG){
+            printf("Messaggio\n");
+        }
+        else if(Flux->typeMSG == FRIE_A){
+            printf("Richiesta accetata\n");
+        }
+        else if(Flux->typeMSG == FRIE_Req){
+            printf("Richiesta di amicizia\n");
+        }
+        else if(Flux->typeMSG == FRIE_R){
+            printf("Richiesta rifutata\n");
+        }
+        else if (Flux->typeMSG == FLOO){
+            printf("Richiesta floo\n");
+        }
+        else{
+            printf("not sens\n");
+        }
+        printf("     fluss.id: %s\n", Flux->id);
+        if(Flux->typeMSG == MSG){
+            printf("     fluss.value: %s\n\n", Flux->value);
+        }
+    }
+
     char msgSend [MAX_TCP_MESAGGE];
 
-    switch (Flux.typeMSG){
+    switch (Flux->typeMSG){
         case MSG:
-            sprintf(msgSend, "SSEM> %s %s+++", Flux.id, Flux.value);
+            sprintf(msgSend, "SSEM> %s %s+++", Flux->id, Flux->value);
             if(DEB) printf("CONUSLT: flusso di tipo MSG invio il seguente messaggio: \"%s\"\n", msgSend);
             ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
 
@@ -912,20 +955,22 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
                 return NOTOK;
             }
 
+            free(Flux);
             return OK;
 
         break;
         
         case FLOO:
-            sprintf(msgSend, "OOLF> %s %s+++", Flux.id, Flux.value);
+            sprintf(msgSend, "OOLF> %s %s+++", Flux->id, Flux->value);
             if(DEB) printf("CONUSLT: flusso di tipo FLOO invio il seguente messaggio: \"%s\"\n", msgSend);
-            ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+            byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
 
             if(byteSent <= 0){
                 if(DEB) printf("CONUSLT: flusso di tipo FLOO non inviato\n");
                 return NOTOK;
             }
 
+            free(Flux);
             return OK;
 
 
@@ -940,10 +985,11 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
 
     char buff[MAX_TCP_MESAGGE];
 
-    switch (Flux.typeMSG)
+    switch (Flux->typeMSG)
     {
         case FRIE_Req:
-            printf(msgSend, "EIRF> %s+++", Flux.id);
+
+            sprintf(msgSend, "EIRF> %s+++", Flux->id);
             if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req invio il seguente messaggio: \"%s\"\n", msgSend);
             ssize_t byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
 
@@ -960,6 +1006,11 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
             typFlux respons;
             if(strcmp(buff, "OKIRF+++") == 0){
                 //richiesta di amaicizia accetata   
+                if(addFrined(ID, Flux->id) == NOTOK){
+                    if(DEB) printf("CONUSLT: amicizia non inserita\n");
+                    return NOTOK;
+                }
+
                 if(DEB) printf("CONUSLT: richiesta di amicizia accettata\n");
                 respons = FRIE_A; 
 
@@ -976,20 +1027,54 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
             }
 
             simpleTCPmsg(sock, ACKRF);
-            sendUDPmessage(Flux.id , respons);
-            addMSG(Flux.id, ID, NULL, respons);
 
+            if(addMSG(Flux->id, ID, NULL, respons) == NOTOK){
+                if(DEB) printf("CONUSLT: flusso non inserito\n");
+                return NOTOK; 
+            }
+
+            sleep(1);
+
+            if(sendUDPmessage(Flux->id , respons) == NOTOK){
+                if(DEB) printf("CONUSLT: TCP non inviato\n");
+                return NOTOK; 
+            }
+
+            free(Flux);
             return OK;
 
         break;
 
         case FRIE_A:
             //RICHIESTA ACCETTATA
+            if(DEB) printf("CONUSLT: amicizia accettata\n");
+
+            sprintf(msgSend, "FRIEN %s+++", Flux->id);
+            byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req non inviato\n");
+                return NOTOK;
+            }
+
+            free(Flux);
+            return OK;
         break;
         
         case FRIE_R:
             //RICHIESTA RIFIUTATA
+            if(DEB) printf("CONUSLT: amicizia rifiutata\n");
 
+            sprintf(msgSend, "NOFRI %s+++", Flux->id);
+            byteSent = write(sock, msgSend, strlen(msgSend)*sizeof(char));  
+
+            if(byteSent <= 0){
+                if(DEB) printf("CONUSLT: flusso di tipo FRIE_Req non inviato\n");
+                return NOTOK;
+            }
+
+            free(Flux);
+            return OK;
         break;
 
         default:
@@ -998,6 +1083,8 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
 
 
 
+    if(DEB) printf("CONSLT: messaggio letto non ha senso \n");
+    return NOTOK;
 }
 
 /*=========================*/
@@ -1175,8 +1262,11 @@ void * pthreadConection(void * sockClient){
                 if(LISTUSER(sClient) == NOTOK){
                     if(DEB) printf("Non sono stati inviati gli id degli utenti su socket [ %d ]\n", sClient);
                 }
+                else{
 
-                if(DEB) printf("Invio di tutti i dati per richiesta lista utenti\n");
+                    if(DEB) printf("Invio di tutti i dati per richiesta lista utenti\n");
+                }
+
 
             }
             else{
@@ -1188,6 +1278,14 @@ void * pthreadConection(void * sockClient){
 
         else if(strcmp(type, "CONSU") == 0){
             if(DEB) printf("Richiesta di consultazione di flussi\n");
+
+            if(CONUSLT(sClient, id) == NOTOK){
+                if(DEB) printf ("Conslutazione fallita su Socket %d\n", sClient);
+            }
+            else{
+
+                if(DEB) printf("Consutazione avventua con successo\n");
+            }
 
         }
 
