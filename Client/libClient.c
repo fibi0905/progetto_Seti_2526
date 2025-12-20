@@ -820,7 +820,7 @@ int flood(char *mess)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//NON TERMINATA
+// NON TERMINATA
 int list_client(char *listClient)
 {
     debug("Clinet: inizio  richiesta lista client"); // debug
@@ -831,7 +831,7 @@ int list_client(char *listClient)
     int offset = 0;
 
     memcpy(msg + offset, "LIST?", 5);
-    offset += 5; // Spostiamo offset avanti di 6
+    offset += 5; // Spostiamo offset avanti di 5
 
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);
@@ -860,7 +860,7 @@ int list_client(char *listClient)
 
     // lettura risposta server e controllo numero di byte letti
     nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-    if ( nByte != 10 && nByte != 11 && nByte != 12) 
+    if (nByte != 10 && nByte != 11 && nByte != 12)
     {
         // byte letti errati
 
@@ -884,7 +884,7 @@ int list_client(char *listClient)
 
     debug("Client: creazione regex per valutazione risposta server\n"); // devug
 
-    regex_t regex;                                 // variabile regex
+    regex_t regex; // variabile regex
     char *pattern = "^RLIST (00[1-9]|0[1-9][0-9]|100)\\+\\+\\+$";
 
     if (regcomp(&regex, pattern, REG_EXTENDED))
@@ -987,8 +987,575 @@ int list_client(char *listClient)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int read_notify(){
+int read_notify(char *output)
+{
+    debug("Clinet: inizio  richiesta consultazione\n"); // debug
+    debug("Client: invio messaggio CONSU\n");           // debug
 
+    // creo buffer e riempo con messaggio finale
+    char msg[DIMBUF];
+    int offset = 0;
+
+    memcpy(msg + offset, "CONSU", 5);
+    offset += 5; // Spostiamo offset avanti di 5
+
+    // aggiungo "+++"
+    memcpy(msg + offset, "+++\0", 4);
+    offset += 3;
+
+    debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+    int nByte = 0; // contatore byte letti/scritti
+
+    nByte = write(descrTCP, msg, offset);
+    if (nByte <= 0) // controllo numero byte scritti
+    {
+        // byte scritto minori di 1, errore
+
+        debug("Client: invio messsaggio CONSU fallito, scritti %d\n", nByte); // debug
+
+        return NOTOK;
+        // TODO--------------------------------------
+    }
+
+    debug("Client: invio messsaggio CONSU riuscito, inviati %d\n", nByte); // debug
+
+    // byte scritti sufficienti
+
+    // lettura risposta server e controllo numero di byte letti
+    nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+    if (nByte < 8 || nByte > 218) // il minimo numero di byte da ricevere è 8 (NOCON+++), il massimo 218 (SSEM>/OOLF>: 5 + " ": 1 + id: 8 + " ": 1 + mess: 200 + "+++": 3 = 218)
+    {
+        // byte letti errati
+
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+
+        // TODO--------------------------------------------------------------------------------------------------
+    }
+    msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+    debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+    debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+
+    debug("Client: creazione regex per valutazione risposta server\n"); // devug
+
+    regex_t regex;                                                                                                 // variabile regex
+    char *pattern = "^((SSEM>|OOLF>) [a-zA-Z0-9]{8} .{1,200}|(EIRF>|FRIEN|NOFRI) [a-zA-Z0-9]{8}|NOCON)\\+\\+\\+$"; // testo regex
+
+    if (regcomp(&regex, pattern, REG_EXTENDED))
+    {
+
+        debug("Client: creazione regex fallita\n");
+
+        return NOTOK;
+    }
+
+    debug("Client: creazione regex riuscita\n");
+
+    if (regexec(&regex, msg, 0, NULL, 0) != 0)
+    {
+
+        // ricezione errata, protocollo non rispettato
+
+        debug("Client: ricezione messaggio anomala, NON RISPETTA REGEX\n"); // debug
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+
+    if (!se_bufferVuoto(descrTCP))
+    {
+        debug("Client: buffer strtok non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+
+    // ricezione corretta
+    debug("Client: valutazione risposta server successo\n"); // debug
+
+    // estrazione messaggio
+    debug("Client: estraggo il tipo di notifica\n"); // debug
+
+    char *tipoNotifica;
+
+    tipoNotifica = strtok(msg, " +");
+
+    debug("Client: tipo di notifica: %s\n", tipoNotifica);
+
+    if (strcmp(tipoNotifica, "SSEM>") == 0){ // se server trasmette un flusso di tipo messaggio client
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id e il testo del messaggio
+
+            debug("Client: tipo di notifica = messaggio, estraggo id del mittente e il testo del messaggio\n");
+
+            char *id;
+            char *mess;
+
+            id = strtok(NULL, " ");
+            mess = strtok(NULL, "+");
+
+            debug("Client: id:\"%s\", mess:\"%s\"\n", id, mess);
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto messaggio da\"%s\", testo:\"%s\"\n", id, mess);
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+    else if (strcmp(tipoNotifica, "OOLF>") == 0){ // se server trasmette un flusso di tipo inondazione FLOO
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id e il testo del messaggio
+
+            debug("Client: tipo di notifica = inondazione, estraggo id del mittente e il testo del messaggio\n");
+
+            char *id;
+            char *mess;
+
+            id = strtok(NULL, " ");
+            mess = strtok(NULL, "+");
+
+            debug("Client: id:\"%s\", mess:\"%s\"\n", id, mess);
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto messaggio di inondazione da\"%s\", testo:\"%s\"\n", id, mess);
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }else if (strcmp(tipoNotifica, "EIRF>") == 0){ // se server trasmette un flusso di tipo richiesta d'amicizia
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id del client a cui ho inviato una richiesta d'amicizia
+
+            debug("Client: tipo di notifica = richiesta d'amicizia, estraggo id del mittente\n");
+
+            char *id;
+
+            id = strtok(NULL, "+");
+
+            debug("Client: id:\"%s\"\n", id);
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto richiesta di amicizia da \"%s\"\n", id);
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return FRIEND_REQUEST;
+        } 
+        
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+    } else if (strcmp(tipoNotifica, "FRIEN") == 0){ // se server trasmette un flusso di tipo risposta a richiesta d'amicizia accept
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id del client che ha risposto  alla mia richiesta d'amicizia
+
+            debug("Client: tipo di notifica = risposta a richiesta d'amicizia, estraggo id del mittente\n");
+
+            char *id;
+
+            id = strtok(NULL, "+");
+
+            debug("Client: id:\"%s\"\n", id);
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto richiesta di amicizia accettata da \"%s\"\n", id);
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    } else if (strcmp(tipoNotifica, "NOFRI") == 0){ // se server trasmette un flusso di tipo risposta a richiesta d'amicizia deny
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id del client che ha risposto  alla mia richiesta d'amicizia
+
+            debug("Client: tipo di notifica = risposta a richiesta d'amicizia, estraggo id del mittente\n");
+
+            char *id;
+
+            id = strtok(NULL, "+");
+
+            debug("Client: id:\"%s\"\n", id);
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto richiesta di amicizia rifiutata da \"%s\"\n", id);
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    } else if (strcmp(tipoNotifica, "NOCON") == 0){ // se server trasmette un flusso di tipo terminati flussi da consultare
+        // ricezione messaggio
+
+        if (se_bufferVuoto(descrTCP))
+        {
+            // estraggo id del client che ha risposto  alla mia richiesta d'amicizia
+
+            debug("Client: tipo di notifica = terminati flussi da consultare\n");
+
+            if (strtok(NULL, " +") != NULL)
+            { // controllo che la stringa sia terminata
+                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+                svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+                debug("Client: buffer svuotato correttamente\n"); // debug
+
+                return NOTOK;
+            }
+
+            // creazione stringa output
+            sprintf(output, "Ricevuto terminate notifiche\n");
+
+            debug("Client: creazione stringa output avvenuta con successo\n"); // debug
+
+            return OK;
+        }
+
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        return NOTOK;
+    }
+    // consultazione fallita
+
+    debug("Client: consultazione notifiche fallita\n"); // debug
+
+    debug("Client: ricezione messaggio anomala\n"); // debug
+
+    svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+    debug("Client: buffer svuotato correttamente\n"); // debug
+
+    return NOTOK;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int friend_request_response(char response)
+{
+    debug("Client: inizio  risposta a richiesta d'amicizia\n"); // debug
+
+    debug("Client: valutazione risposta utente\n");
+
+    switch (response)
+    {
+    case 'y':
+    {
+        debug("Client: valutato accettazione richiesta d'amicizia\n");
+
+        // creo buffer e riempo con messaggio finale
+        char msg[DIMBUF];
+        int offset = 0;
+
+        memcpy(msg + offset, "OKIRF", 5);
+        offset += 5; // Spostiamo offset avanti di 5
+
+        // aggiungo "+++"
+        memcpy(msg + offset, "+++\0", 4);
+        offset += 3;
+
+        debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+        int nByte = 0; // contatore byte letti/scritti
+
+        nByte = write(descrTCP, msg, offset);
+        if (nByte <= 0) // controllo numero byte scritti
+        {
+            // byte scritto minori di 1, errore
+
+            debug("Client: invio messsaggio OKIRF fallito, scritti %d\n", nByte); // debug
+
+            return NOTOK;
+            // TODO--------------------------------------
+        }
+
+        debug("Client: invio messsaggio OKIRF riuscito, inviati %d\n", nByte); // debug
+
+        // byte scritti sufficienti
+
+        // lettura risposta server e controllo numero di byte letti
+        nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+        if (nByte != 8) 
+        {
+            // byte letti errati
+
+            msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+            debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+            debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+
+            // TODO--------------------------------------------------------------------------------------------------
+        }
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+
+        if (strcmp(msg, "ACKRF+++") == 0) // se server riceve correttamente
+        {
+            // invio riuscito
+
+            if (se_bufferVuoto(descrTCP))
+            {
+                debug("Client: invio accettazione richiesta d'amicizia avvenuta con successo\n"); // debug
+                return OK;
+            }
+
+            debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+        }
+        else
+        {
+            debug("Client: invio accettazione richiesta d'amicizia fallita\n"); // debug
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+        }
+
+        break;
+    }
+    case 'n':
+    {
+        debug("Client: valutato rifiutare richiesta d'amicizia\n");
+
+        // creo buffer e riempo con messaggio finale
+        char msg[DIMBUF];
+        int offset = 0;
+
+        memcpy(msg + offset, "NOIRF", 5);
+        offset += 5; // Spostiamo offset avanti di 5
+
+        // aggiungo "+++"
+        memcpy(msg + offset, "+++\0", 4);
+        offset += 3;
+
+        debug("Client: messaggio:\"%s\"\n", msg); // debug
+
+        int nByte = 0; // contatore byte letti/scritti
+
+        nByte = write(descrTCP, msg, offset);
+        if (nByte <= 0) // controllo numero byte scritti
+        {
+            // byte scritto minori di 1, errore
+
+            debug("Client: invio messsaggio NOIRF fallito, scritti %d\n", nByte); // debug
+
+            return NOTOK;
+            // TODO--------------------------------------
+        }
+
+        debug("Client: invio messsaggio NOIRF riuscito, inviati %d\n", nByte); // debug
+
+        // byte scritti sufficienti
+
+        // lettura risposta server e controllo numero di byte letti
+        nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
+        if (nByte != 8) 
+        {
+            // byte letti errati
+
+            msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+            debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
+            debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+
+            // TODO--------------------------------------------------------------------------------------------------
+        }
+        msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
+
+        debug("Client: lettura risposta server riuscito, letti %d\n", nByte); // debug
+        debug("Client: messaggio server:\"%s\"\n", msg);                      // debug
+
+        if (strcmp(msg, "ACKRF+++") == 0) // se server riceve correttamente
+        {
+            // invio riuscito
+
+            if (se_bufferVuoto(descrTCP))
+            {
+                debug("Client: invio rifiuto richiesta d'amicizia avvenuta con successo\n"); // debug
+                return OK;
+            }
+
+            debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+        }
+        else
+        {
+            debug("Client: invio rifiuto richiesta d'amicizia fallita\n"); // debug
+
+            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Client: buffer svuotato correttamente\n"); // debug
+
+            return NOTOK;
+        }
+
+        break;
+    }
+    default:
+    {
+        debug("Client: parametro responde non riconosciuto\n"); //debug
+        debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n");    //debug
+        return NOTOK;
+        break;
+    }
+    }
+
+    debug("Client: parametro responde non riconosciuto\n"); //debug
+    debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n");    //debug
+    return NOTOK;
+    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

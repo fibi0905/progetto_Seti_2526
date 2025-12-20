@@ -166,6 +166,67 @@ int main(const int argc, const char *args[])
             }
             break;
         }
+        case 7 :
+        {
+            char text[DIMBUF];               // buffer della lista dei clint
+
+            err = read_notify(text);  //chiamata listClient
+            bool flag = false;   //variabile flag del ciclo, messa a falso quando bisognerà uscire e quindi l'utente avrà risposto, tiene conto se è una richiesta d'amicizia EIRF
+
+            if(err == FRIEND_REQUEST){  //ricevuta richiesta d'amicizia
+                // outout
+                printf("%s\n", text);
+                
+                flag = true;
+                char userResponse;
+
+                while (flag)
+                {
+                    // input/output
+                    printf("vuoi accettare? (y/n)\n");
+                    scanf("%c", &userResponse);
+
+                    switch (userResponse)
+                    {
+                    case 'y':
+                    {
+                        //accetta la richiesta
+                        err = friend_request_response(userResponse);
+                        flag = false;
+                        break;
+                    }
+                    case 'n':
+                    {
+                        //rifiuta la richiesta
+                        err = friend_request_response(userResponse);
+                        flag = false;
+                        break;
+                    }
+                    default:
+                    {
+                        // output
+                        printf("risposta non riconosciuta, riprova\n");
+                        break;
+                    }
+                    }
+                }
+
+                flag = true;
+            }
+
+            //controllo errori friend_request_response/read_notify
+            if (err != OK)
+                printf("invio richiesta consultazione notifiche fallito\n");
+            else if (flag){
+                printf("Invio risposta richiesta d'amicizia riuscito\n");
+            } else 
+                printf("%s", text);
+
+            
+            
+            
+            break;;
+        }
         case 8:
         {
             err = client_shutdown();
