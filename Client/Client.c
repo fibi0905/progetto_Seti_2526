@@ -59,10 +59,11 @@ int main(const int argc, const char *args[])
     printf("Avvio del client riuscito\n");
     uint8_t sceltaUtente;
     bool primaVolta = true;
+    bool errprimoAccesso = false;
 
     while (true)
     {
-        bool errprimoAccesso;
+        
         stampaMenu((primaVolta || errprimoAccesso));
         scanf("%hhd", &sceltaUtente);
 
@@ -76,8 +77,10 @@ int main(const int argc, const char *args[])
                     printf("registrazione fallita\n");
                     errprimoAccesso = true;
                 }
-                else
+                else{
                     printf("registrazione riuscita\n");
+                    errprimoAccesso = false;
+                }
                 break;
             }
         case 2:
@@ -88,8 +91,10 @@ int main(const int argc, const char *args[])
                     printf("accesso fallito\n");
                     errprimoAccesso = true;
                 }
-                else
+                else{
+                    errprimoAccesso = false;
                     printf("accesso riuscito\n");
+                }
                 break;
             }
         case 3:
@@ -153,12 +158,12 @@ int main(const int argc, const char *args[])
             err = list_client(listClient);  //chiamata listClient
             if (err != OK)
                 printf("invio richiesta numero client fallito\n");
-            else
+            else{
                 printf("invio richiesta numero client riuscito\n");
 
-            // outout
-            printf("id dei client:%s\n", listClient);
-
+                // outout
+                printf("id dei client:%s\n", listClient);
+            }
             break;
         }
         case 8:

@@ -67,6 +67,9 @@ int flood(char *);
 // permette di ricevere nel parametro passato la lista di tutti i client connessi, separata da ,
 int list_client(char *);
 
+// permette di leggere le nofiche e eliminarle dal server
+int read_notify();
+
 // Gestisce spegnimento del client, il parametro desc è un vettore di grandezza 2 con in pos 0 il descrittore del socket udo
 // e in pos 1 il descrittore del socket tcp. Dato che non è possibile sapere se i socket da chiudere sarà solo il socket tcp, solo udp o entrambi
 // sarà necessario controllare che non siano -1

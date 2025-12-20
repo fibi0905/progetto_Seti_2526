@@ -83,7 +83,7 @@ int recupero_credenziali()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// funzione "privata" scrivere commento e sposta, idem per quella sopra
 bool se_bufferVuoto(int fd)
 {
     debug("Client: inizio controllo se buffer vuoto\n"); // debug
@@ -99,7 +99,7 @@ bool se_bufferVuoto(int fd)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// funzione "privata" scrivere commento e sposta, idem per quella sopra
 void svuota_buffer(const int socket_fd)
 {
     char trash[256]; // Variabile spazzatura
@@ -820,7 +820,7 @@ int flood(char *mess)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//NON TERMINATA
 int list_client(char *listClient)
 {
     debug("Clinet: inizio  richiesta lista client"); // debug
@@ -860,7 +860,7 @@ int list_client(char *listClient)
 
     // lettura risposta server e controllo numero di byte letti
     nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-    if (nByte != 11 && nByte != 12) // ipotizzo che num-item(inviato dal server) possa essere 1,2 byte o 3 in base a se client 100 o >100
+    if ( nByte != 10 && nByte != 11 && nByte != 12) // ipotizzo che num-item(inviato dal server) possa essere 1,2 byte o 3 in base a se client 100 o >100
     {
         // byte letti errati
 
@@ -885,7 +885,7 @@ int list_client(char *listClient)
     debug("Client: creazione regex per valutazione risposta server\n"); // devug
 
     regex_t regex;                                 // variabile regex
-    char *pattern = "^RLIST [0-9]{2,3}\\+\\+\\+$"; // testo regex
+    char *pattern = "^RLIST ([1-9][0-9]?|100)\\+\\+\\+$";   //testo regex
 
     if (regcomp(&regex, pattern, REG_EXTENDED))
     {
@@ -986,6 +986,12 @@ int list_client(char *listClient)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int read_notify(){
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // NON TERMINATA
 int client_shutdown()
 {
@@ -1047,7 +1053,7 @@ int client_shutdown()
 
         if (se_bufferVuoto(descrTCP))
         {
-            debug("Client: trasmissione richiesta d'amicizia avvenuta con successo\n"); // debug
+            debug("Client: spegnimento e disconnessione avvenuta con successo\n"); // debug
             return OK;
         }
 
