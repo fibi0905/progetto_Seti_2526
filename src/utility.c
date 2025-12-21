@@ -20,3 +20,19 @@ void usingedIntTOlitEndian(unsigned int value, char hexString[3]) {
     sprintf(hexString, "%02X", byte);
     // hexString conterrà "00" per 0, "01" per 1, "0A" per 10, "FF" per 255
 }
+
+
+
+void add0 (int n, char *Ris ){
+
+    if(n<10){
+        sprintf(Ris, "00%u", n);
+    }
+    else if(n<100){
+        sprintf(Ris, "0%u", n);
+    }
+    else{
+        sprintf(Ris, "%u", n);
+    }
+
+}

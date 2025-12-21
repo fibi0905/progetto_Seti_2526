@@ -753,7 +753,7 @@ unsigned int MESSAGE(const char *msg, const char idSender[ID_LEN]){
     }
 
     char contMSG [MAX_LEN];
-    unsigned int byteMSG = (strlen(msg) - 18); 
+    unsigned int byteMSG = (sizeStr - 18); 
 
     strncpy(contMSG, msg+15, byteMSG);
     contMSG[byteMSG] = '\0';
@@ -837,8 +837,13 @@ unsigned int LISTNUM(int sock){
     char msgSend [13];
 
     pthread_mutex_lock(&semNuser);
+    char strNuser[4];
 
-    sprintf(msgSend, "RLIST %u+++", nUser);
+    add0(nUser, strNuser);
+
+    strNuser[3] = '\0';
+
+    sprintf(msgSend, "RLIST %s+++", strNuser);
 
     pthread_mutex_unlock(&semNuser);
 
@@ -890,9 +895,6 @@ unsigned int LISTUSER(int sock){
 }
 
 /*========================*/
-
-
-/*==========CONSU==========*/
 
 unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
     msg *Flux= NULL;
@@ -1087,9 +1089,105 @@ unsigned int CONUSLT (int sock, const char ID [ID_LEN]){
     return NOTOK;
 }
 
-/*=========================*/
+/*==========FLOO==========*/
+
+unsigned int AUXfloo(const char msg[MAX_LEN], const unsigned int poxID, char visited[][ID_LEN], unsigned int *nVisited){
+    
+    // Controlla se già visitato per evitare cicli
+    for(unsigned int i = 0; i < *nVisited; i++){
+        if(strcmp(visited[i], listUser[poxID].id) == 0){
+            return OK; // Già visitato, evitiamo cicli
+        }
+    }
+    
+    // Marca come visitato
+    pthread_mutex_lock(&semList);
+    strcpy(visited[*nVisited], listUser[poxID].id);
+    (*nVisited)++;
+    unsigned int numFriends = listUser[poxID].nFri;
+    pthread_mutex_unlock(&semList);
+    
+    // Invia il messaggio a tutti gli amici
+    for(unsigned int i = 0; i < numFriends; i++){
+        pthread_mutex_lock(&semList);
+        char friendID[ID_LEN];
+        strcpy(friendID, listUser[poxID].listFri[i]);
+        pthread_mutex_unlock(&semList);
+        
+        // Aggiungi messaggio e invia notifica
+        if(addMSG(friendID, listUser[poxID].id, msg, FLOO) == NOTOK){
+            if(DEB) printf("AUXfloo: addMsg fallita per: %s amico di %s\n", 
+                          friendID, listUser[poxID].id);
+            continue; // Continua con gli altri amici
+        }
+        
+        if(sendUDPmessage(friendID, FLOO) == NOTOK){
+            if(DEB) printf("AUXfloo: sendUDPmsg fallita per: %s amico di %s\n", 
+                          friendID, listUser[poxID].id);
+            continue;
+        }
+        
+        // Chiamata ricorsiva per propagare agli amici degli amici
+        unsigned int poxFR = findUser(friendID);
+        if(poxFR != NOTFIND){
+            AUXfloo(msg, poxFR, visited, nVisited);
+        }
+    }
+    
+    return OK;
+}
+
+unsigned int MSGFLOO(char * msg,const char ID [ID_LEN]){
+    pthread_mutex_lock(&semNuser);
+    if(nUser <= 1){
+        if(DEB) printf("FLOO: il numero di user non sufficiente\n");
+        pthread_mutex_unlock(&semNuser);
+        return NOTOK;
+    }
+    pthread_mutex_unlock(&semNuser);
+
+    size_t sizeStr  = strlen(msg);
+
+    //if(DEB) printf("il messaggio: %s è lungo %lu byte\n", msg, sizeStr);
+
+    if(sizeStr<6 || sizeStr>218){
+        if(DEB) printf("MESSAGE: messaggio non coretto\n");
+        return NOTOK;
+    }
+
+    char contMSG [MAX_LEN];
+    unsigned int byteMSG = (sizeStr - 9); 
+
+    /*
+        Lunghezza:  
+            FLOO? (5) + (1) + mess(1||200) + "+++" (3) = 
+
+    */
+
+    strncpy(contMSG, msg+6, byteMSG);
+    contMSG[byteMSG] = '\0';
+
+    if(DEB) printf("FLOO: il FLOO da inviare \"%s\"  ed è lungo %u byte\n", contMSG,byteMSG);
 
 
+    unsigned int pox;
+
+    if((pox = findUser(ID)) == NOTFIND){
+        return NOTOK;
+    }
+
+
+    char visited[MAX_CLIENT][ID_LEN];
+    unsigned int nVisited = 0;
+    
+    if(DEB) printf("FLOO: inizio invio del flood\n");
+    
+    return AUXfloo(contMSG, pox, visited, &nVisited);
+}
+
+
+
+/*=======================*/
 
 /*-----------------------------------------------------*/
 
@@ -1231,6 +1329,15 @@ void * pthreadConection(void * sockClient){
         else if(strcmp(type, "FLOO?") == 0){
             if(DEB) printf("Richiesta di invio di FLOO\n");
 
+
+            if(MSGFLOO(buff, id) == NOTOK){
+                if(DEB) printf("Floo non è andata a buon fine su socket %d\n", sClient);
+            }
+            else{
+                simpleTCPmsg(sClient, FLOO_OK);
+                if(DEB) printf("Floo è andata a buon fine \n");
+
+            }
         }
 
 
