@@ -245,10 +245,21 @@ int new_client()
     msg[offset] = ' ';
     offset += 1;
 
+    char lit[3];
+
+    usingedIntTOlitEndian(utente.mdp, lit);
+
+    /*
     // aggiungo al messaggio la password in little endian
     msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
     msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
     offset += 2;
+    */
+
+    msg[offset] = lit[0];
+    offset += 1;
+    msg[offset] = lit[1];
+    offset += 1;
 
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);

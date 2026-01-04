@@ -7,7 +7,7 @@
 #define OK 1
 #define NOTOK 0
 #define NOTFIND -1
-
+#define FRIEND_REQUEST 2
 #define ID_LEN 9    //sicuri 9?? \n finale forse non importa
 
 
