@@ -26,7 +26,7 @@ typedef struct user user;
 #define DIMBUF 1024  // dimensione buffer
 // credenziali predefinite --------------------------------------------------------------------------
 #define PASSWORD_STD 0
-#define ID_STD "Ferraro"
+#define ID_STD "Ferraro1"
 
 // STRUTTURA USER ----------------------------------------------------------------------------------
 struct user
