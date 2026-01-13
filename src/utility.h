@@ -28,3 +28,6 @@ unsigned int litEndianTOusingedInt(unsigned char mdpBYTE [2]);
 
 //converte da usinged int a littel-endian
 void usingedIntTOlitEndian(unsigned int value, char hexString[3]);
+
+
+void add0 ( int n, char *Ris );
