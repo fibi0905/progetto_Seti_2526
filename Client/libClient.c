@@ -647,9 +647,9 @@ int send_message(char *idDestination, char *mess)
     snprintf(msg + offset, 10, "%-8s ", idDestination); // uso 9 byte per '\0' dopodichè ci scrivo sopra
     offset += 9;
 
-    // inserisco mess, massimo 200 caratteri + '\0'
-    memcpy(msg + offset, mess, 201);
-    offset += 200; // Spostiamo offset avanti di 200
+    // inserisco mess, massimo 200 caratteri compreso '\0'
+    memcpy(msg + offset, mess, strlen(mess));
+    offset += strlen(mess); // Spostiamo offset avanti di lunghezza mess 
 
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);

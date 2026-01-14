@@ -119,7 +119,7 @@ int main(const int argc, const char *args[])
                 char message[201];               // buffer del messaggio
     
                 // input/outout
-                printf("inserisci l'username del client di cui desideri diventare amico\n");
+                printf("inserisci l'username del client a cui desideri inivare il messaggio\n");
                 scanf("%s", idClintDestination);
     
                 // input/outout
