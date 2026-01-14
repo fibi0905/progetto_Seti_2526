@@ -1181,9 +1181,9 @@ int list_client(char *listClient)
 
             //rilascio risorse
             if(client_shutdown() == OK)
-            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
-        else
-            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
             return NOTOK;
         }
@@ -1202,6 +1202,28 @@ int list_client(char *listClient)
 
         strcat(listClient, token); // aggiunta alla lista dei client
     }
+
+    //controllo buffer strtok
+    debug("Client: controllo buffer strtok\n"); //debug
+
+    if(strtok(NULL, " +") != NULL){ //controllo che la stringa sia terminata
+        debug("Client: buffer strtok non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+
+        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+        debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
+        return NOTOK;
+    }
+
+    debug("Client: controllo buffer strtok terminato con successo\n");  //debug
+
 
     debug("Client: terminato ricezione id client\n");
 
@@ -1323,7 +1345,7 @@ int read_notify(char *output)
 
     if (!se_bufferVuoto(descrTCP))
     {
-        debug("Client: buffer strtok non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
 
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
@@ -1370,7 +1392,7 @@ int read_notify(char *output)
 
             if (strtok(NULL, " +") != NULL)
             { // controllo che la stringa sia terminata
-                debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
+                debug("Client: buffer strtok non vuoto dopo lettura messaggio, protocollo non rispettato\n");
 
                 svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
