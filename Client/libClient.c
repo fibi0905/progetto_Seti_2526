@@ -837,7 +837,7 @@ int send_message(char *idDestination, char *mess)
     // inserisco mess, massimo 200 caratteri compreso '\0'
     memcpy(msg + offset, mess, strlen(mess));
     offset += strlen(mess); // Spostiamo offset avanti di lunghezza mess 
-
+    
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);
     offset += 3;

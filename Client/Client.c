@@ -123,10 +123,20 @@ int main(const int argc, const char *args[])
                 // input/outout
                 printf("inserisci l'username del client a cui desideri inivare il messaggio\n");
                 scanf("%s", idClintDestination);
-    
+                
+
+                //svuoto il buffer stdin
+                int ch;
+                while ((ch = getchar()) != '\n' && ch != EOF) {
+                    // scarta
+                }
+
                 // input/outout
                 printf("inserisci il messaggio da inviare:\n");
-                scanf("%s", message);
+                //scanf("%s", message);
+                fgets(message, 201, stdin); //leggo con fgets per avere una stringa completa di spazi (scanf si blocca al primo spazio)
+                // rimuove il newline finale
+                message[strcspn(message, "\n")] = '\0';
     
                 err = send_message(idClintDestination, message);    //chiamata sendMessage
                 if (err != OK)
