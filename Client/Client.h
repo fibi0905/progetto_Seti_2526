@@ -17,6 +17,10 @@
 #include <stdarg.h>
 #include <regex.h>
 #include <time.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <errno.h>
+
 
 // TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;

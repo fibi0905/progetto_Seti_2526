@@ -65,7 +65,7 @@ int main(const int argc, const char *args[])
     {
         
         stampaMenu((primaVolta || errprimoAccesso));
-        scanf("%hhd", &sceltaUtente);
+        scanf(" %hhd", &sceltaUtente);
 
         switch (sceltaUtente)
         {
@@ -255,6 +255,13 @@ int main(const int argc, const char *args[])
 
                 break;
             } 
+        }
+
+        debug("FINE SWITCH\n");
+        if(errprimoAccesso)
+        {
+            printf("Errore durante l'accesso\n");
+            return NOTOK;
         }
 
         primaVolta = false;

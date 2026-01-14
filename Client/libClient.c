@@ -10,6 +10,7 @@
 user utente;               // descrittore utente
 int descrTCP;              // descrittore socket TCP
 int descrUDP;              // descrittore socket UDP
+pthread_t tid;             // id del thread
 bool seDebugAttivo;        // attiva modalità verbose
 bool seCredenzialiDefault; // attiva le credenziali di default per i test
 bool seErrore;             // se vero c'è stato un errore critico
@@ -87,6 +88,126 @@ int recupero_credenziali()
 
     return OK;
 }
+
+//-------------------INIZIO FUNZIONI THREAD-----------------------------------------------------------------------------------------------------------------------------
+
+void* notificheUDP(void* args)
+{
+    debug("Thread: avviato con successo, tid=%d\n", tid);    //debug
+
+    // Abilito la cancellazione
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    
+    // Imposto il tipo "asincrona": il thread termina quando viene chiamata una pthread_cancel
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    
+    // creo buffer
+    char buf[3];
+
+    int nByte = 0; // contatore byte letti/scritti
+
+    while(true)
+    {
+        // lettura risposta server e controllo numero di byte letti
+        debug("Thread: inizio attesa notifica udp\n");  //debug
+        nByte = recv(descrUDP, buf, 3, 0);
+
+        debug("Thread: ricevuto notifica udp, numero byte ricevuto %d\n", nByte);  //debug
+
+        if (nByte != 3)
+        {
+            // byte letti insufficienti
+    
+            debug("Thread: lettura risposta server fallita, letti %d\n", nByte); // debug
+            debug("Thread: messaggio server:\"%s\"\n", buf);                     // debug
+    
+            svuota_buffer(descrUDP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+    
+            debug("Thread: buffer svuotato correttamente\n"); // debug
+    
+            //rilascio risorse
+            debug("Thread: inizio rilascio risorse\n"); // debug
+            seErrore = true;    //errore critico, necessario spegnimento forzato
+            if(client_shutdown() == OK)
+                debug("Thread: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Thread: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+    
+            return NOTOK;
+        }
+
+        //byte letti corretti
+
+        debug("Thread: numero byte ricevuto corretti\nThread: stampa della notifica corretta in corso\n");  //debug
+
+        if(buf[0] == '0'){
+            //ricevuto una richiesta di amicizia
+            printf("---NOTIFICA------------------------------------\n");
+            printf("- ricevuta richiesta di amicizia\n");
+            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            printf("- hai ancora %d notifiche da leggere\n", numNotifiche);
+            printf("-----------------------------------------------\n");
+
+        } else if(buf[0] == '1'){
+            //ricevuto una richiesta di amicizia accettata
+            printf("---NOTIFICA------------------------------------\n");
+            printf("- una richiesta di amicizia è stata accettata\n");
+            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            printf("- hai ancora %d notifiche da leggere\n", numNotifiche);
+            printf("-----------------------------------------------\n");
+
+        } else if(buf[0] == '2'){
+            //ricevuto una richiesta di amicizia rifiutata
+            printf("---NOTIFICA------------------------------------\n");
+            printf("- una richiesta di amicizia è stata rifiutata\n");
+            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
+            printf("-----------------------------------------------\n");
+
+        } else if(buf[0] == '3'){
+            //ricevuto un messaggio di testo
+            printf("---NOTIFICA------------------------------------\n");
+            printf("- ricevuto messaggio di testo\n");
+            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
+            printf("------------------------------------------------\n");
+
+        } else if(buf[0] == '4'){
+            //ricevuto un messaggio di tipo flood
+            printf("---NOTIFICA------------------------------------\n");
+            printf("- ricevuto messaggio di tipo flood\n");
+            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
+            printf("-----------------------------------------------\n");
+
+        } else {
+            //errore ricezione notifica: protocollo non rispettato
+
+            debug("Thread: ricezione messaggio anomala\n"); // debug
+
+            svuota_buffer(descrUDP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+
+            debug("Thread: buffer svuotato correttamente\n"); // debug
+
+            //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
+            if(client_shutdown() == OK)
+                debug("Thread: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Thread: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
+            return NOTOK;
+        }
+
+        debug("Thread: stampa notifica terminata\n");   //debug
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//singal handler usato dal processo padre per sbloccare il thread figlio in attesa notifica
+void spegnimentoUDP(int sig) {}
+
 //-------------------INIZIO FUNZIONI "PUBBLICHE"------------------------------------------------------------------------------------------------------------------------
 
 int initialization(const int argc, const char *args[])
@@ -99,6 +220,9 @@ int initialization(const int argc, const char *args[])
     descrUDP = NOTOK;
     seDebugAttivo = false;
     seCredenzialiDefault = false;
+
+    //varibile id thread
+    tid = 0;
 
     //inizializzazione utente
     memset(utente.id, 0, 9);
@@ -303,6 +427,28 @@ int startup()
 
     // bind riuscita
     debug("Client: bind del socket udp riuscio\n"); // debug
+
+    //creazione thread notifiche UDP
+    debug("Client: inizio creazione thread per gestione notifiche UDP\n");  //debug
+
+    if ( pthread_create(&tid, NULL, notificheUDP, NULL) != 0)
+    {
+        //errore creazione thread
+        debug("Client: errore creazione thread per gestione notifiche UDP\n");    //debug
+
+        //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
+        return NOTOK;
+    }
+
+    //creazione thread notifiche UDP
+    debug("Client: fine creazione thread per gestione notifiche UDP\n");    //debug
 
     return OK;
 }
@@ -2121,6 +2267,32 @@ int friend_request_response(char response)
 int client_shutdown()
 {
     debug("Client: inizio spegnimento e disconnessione\n"); // debug
+
+    // if(tid != 0)
+    // {
+    //     //spegnimento socket udp in uso dal thread
+    //     debug("Client: spegnimento socket UDP inizio\n");   //debug
+
+    //     // int rit = shutdown(descrUDP, SHUT_RDWR);
+
+    //     // if ( rit != 0)
+    //     //     debug("Client: spegnimento socket UDP fallita, valore di ritorno %d\n", rit);  //debug
+    //     // else
+    //     //     debug("Client: spegnimento socket UDP riuscita\n");  //debug
+
+        
+
+    //     //spegnimento thread
+    //     debug("Client: inizio spegnimento thread\n");   //debug
+    
+        
+    //     pthread_join(tid, NULL);
+    
+    //     debug("Client: fine spegnimento thread\n"); //debug
+    // }
+
+    pthread_kill(tid, SIGUSR1); //mando segnale di kill al thread
+
     debug("Client: invio messaggio IQUIT\n");               // debug
 
     // creo buffer e riempo con messaggio finale
@@ -2174,10 +2346,10 @@ int client_shutdown()
         //rilascio risorse
         close(descrTCP);
         close(descrUDP);
-
+        
         //controllo se errore critico
         if(seErrore)
-            exit(NOTOK);
+            exit(NOTOK);   
 
         return NOTOK;
     }
@@ -2194,13 +2366,15 @@ int client_shutdown()
             debug("Client: spegnimento e disconnessione avvenuta con successo\n"); // debug
 
             //rilascio risorse
+            debug("Client: chiusura socket TCP\n"); //debug
             close(descrTCP);
+            debug("Client: chiusura socket UDP\n");
             close(descrUDP);
 
             //controllo se errore critico
-            if(seErrore)
+            debug("Client: errore critico: %d", seErrore);
                 exit(NOTOK);
-
+     
             return OK;
         }
 
@@ -2237,6 +2411,7 @@ int client_shutdown()
     //controllo se errore critico
     if(seErrore)
         exit(NOTOK);
+    
 
     return NOTOK;
 }
