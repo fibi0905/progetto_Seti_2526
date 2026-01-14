@@ -1,4 +1,3 @@
-#include <pthread.h>
 #include "../src/utility.h"
 
 #define MAX_CLIENT 100

@@ -2,6 +2,7 @@
 // librerie comuni
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 // codici controllo errori
 #define OK 1
