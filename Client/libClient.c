@@ -13,7 +13,80 @@ int descrUDP;              // descrittore socket UDP
 bool seDebugAttivo;        // attiva modalità verbose
 bool seCredenzialiDefault; // attiva le credenziali di default per i test
 
-//-------------------INIZIO FUNZIONI------------------------------------------------------------------------------------------------------------------------------------
+//----------------INIZIO FUNZIONI "PRIVATE"-----------------------------------------------------------------------------------------------------------------------------
+
+// Verifica che il buffer sia vuoto
+bool se_bufferVuoto(int fd)
+{
+    debug("Client: inizio controllo se buffer vuoto\n"); // debug
+    char buf;
+    ssize_t ret;
+
+    // Tenta di leggere 1 byte senza rimuoverlo dal buffer
+    ret = recv(fd, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
+
+    debug("Client: il buffer ha estratto \"%c\", numero byte letti %d, valore di ritorno: %d\n", buf, ret, ret == -1); // debug
+
+    return (ret == -1);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// effettua la pulizia del buffer del fd passato per argomento
+void svuota_buffer(const int socket_fd)
+{
+    char trash[256]; // Variabile spazzatura
+    int n;
+
+    // MSG_DONTWAIT: Legge se c'è roba. Se è vuoto, NON si blocca e ritorna -1.
+    while ((n = recv(socket_fd, trash, sizeof(trash), MSG_DONTWAIT)) > 0)
+    {
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// gestisce recupero creadenziali da terminale.
+// il parametro test se vero procedere con le credenziali fittizie
+int recupero_credenziali()
+{
+    debug("Client: inizio recupero credenziali\n"); // debug
+
+    if (seCredenzialiDefault)
+    {
+        strcpy(utente.id, ID_STD);
+        utente.mdp = PASSWORD_STD;
+
+        debug("Client: sarà effettuto un login con credenziali fittizione std\n"); // debug
+
+        return OK;
+    }
+
+    // inizio registrazione/login utente
+    printf("----REGISTRAZIONE/LOGIN----\n");
+    do
+    {
+        printf("inserisci l'username (8 caratteri alfanumerici):\n");
+        scanf("%s", utente.id);
+
+        // controllo lunghezza username
+        if (strlen(utente.id) != 8)
+            printf("ERRORE: l'username deve essere formato da 8 caratteri alfanumerici\n");
+    } while (strlen(utente.id) != 8);
+
+    do
+    {
+        printf("inserisci la password(compresa tra 0 e 65535):\n");
+        scanf("%d", &utente.mdp);
+
+        // controllo grandezza passoword
+        if (utente.mdp < 0 || utente.mdp > 65535)
+            printf("ERRORE: la password deve essere compresa tra 0 e 65535\n");
+    } while (strlen(utente.id) != 8);
+
+    return OK;
+}
+//-------------------INIZIO FUNZIONI "PUBBLICHE"------------------------------------------------------------------------------------------------------------------------
 
 int initialization(const int argc, const char *args[])
 {
@@ -58,80 +131,6 @@ void set_credenzialiDefault(bool b)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// gestisce recupero creadenziali da terminale.
-// il parametro test se vero procedere con le credenziali fittizie
-//
-// NON TERMINATA
-int recupero_credenziali()
-{
-    debug("Client: inizio recupero credenziali\n"); // debug
-
-    if (seCredenzialiDefault)
-    {
-        strcpy(utente.id, ID_STD);
-        utente.mdp = PASSWORD_STD;
-
-        debug("Client: sarà effettuto un login con credenziali fittizione std\n"); // debug
-
-        return OK;
-    }
-
-    // inizio registrazione/login utente
-    printf("----REGISTRAZIONE/LOGIN----\n");
-    do
-    {
-        printf("inserisci l'username (8 caratteri alfanumerici):\n");
-        scanf("%s", utente.id);
-
-        // controllo lunghezza username
-        if (strlen(utente.id) != 8)
-            printf("ERRORE: l'username deve essere formato da 8 caratteri alfanumerici\n");
-    } while (strlen(utente.id) != 8);
-
-    do
-    {
-        printf("inserisci la password(compresa tra 0 e 65535):\n");
-        scanf("%d", &utente.mdp);
-
-        // controllo grandezza passoword
-        if (utente.mdp < 0 || utente.mdp > 65535)
-            printf("ERRORE: la password deve essere compresa tra 0 e 65535\n");
-    } while (strlen(utente.id) != 8);
-
-    return OK;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// funzione "privata" scrivere commento e sposta, idem per quella sopra
-bool se_bufferVuoto(int fd)
-{
-    debug("Client: inizio controllo se buffer vuoto\n"); // debug
-    char buf;
-    ssize_t ret;
-
-    // Tenta di leggere 1 byte senza rimuoverlo dal buffer
-    ret = recv(fd, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
-
-    debug("Client: il buffer ha estratto \"%c\", numero byte letti %d, valore di ritorno: %d\n", buf, ret, ret == -1); // debug
-
-    return (ret == -1);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// funzione "privata" scrivere commento e sposta, idem per quella sopra
-void svuota_buffer(const int socket_fd)
-{
-    char trash[256]; // Variabile spazzatura
-    int n;
-
-    // MSG_DONTWAIT: Legge se c'è roba. Se è vuoto, NON si blocca e ritorna -1.
-    while ((n = recv(socket_fd, trash, sizeof(trash), MSG_DONTWAIT)) > 0)
-    {
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void debug(const char *format, ...)
 {
     if (seDebugAttivo)
@@ -152,7 +151,7 @@ void debug(const char *format, ...)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATA
+
 int startup()
 {
     debug("Client: Inizio creazione socket TCP\n"); // debug
@@ -175,10 +174,14 @@ int startup()
 
         debug("Client: connessione fallita\n"); // debug
 
-        client_shutdown();
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
-        // TODO--------------------------------------------------------------------------------------------------------------------------
     }
     // connessione riuscita
 
@@ -211,8 +214,14 @@ int startup()
 
         debug("Client: bind del socket udp fallito\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO----------------------------------------------------------------------------------
     }
 
     // bind riuscita
@@ -224,7 +233,7 @@ int startup()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATA
+
 int new_client()
 {
     debug("Client: Inizio registrazione\n"); // debug
@@ -237,8 +246,14 @@ int new_client()
 
         debug("Client: recupero credenziali fallito\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO----------------------------------------------------------------------------------------------
     }
 
     debug("Client: recupero credenziali riuscito\n"); // debug
@@ -290,8 +305,14 @@ int new_client()
 
         debug("Client: invio messsaggio REGIS fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio REGIS riuscito, inviati %d\n", nByte); // debug
@@ -315,9 +336,14 @@ int new_client()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -338,6 +364,13 @@ int new_client()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
     else if (strcmp(msg, "GOBYE+++") == 0)
@@ -356,6 +389,13 @@ int new_client()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -367,11 +407,18 @@ int new_client()
 
     debug("Client: buffer svuotato correttamente\n"); // debug
 
+    //rilascio risorse
+    debug("Client: inizio rilascio risorse\n"); // debug
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATA
+
 int login()
 {
     debug("inizio login");
@@ -380,9 +427,14 @@ int login()
     {
         debug("Client: recupero credenziali fallito");
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+        return NOTOK;
     }
 
     debug("Client: invio messaggio CONNE\n"); // debug
@@ -431,8 +483,14 @@ int login()
 
         debug("Client: invio messsaggio CONNE fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio CONNE riuscito, inviati %d\n", nByte); // debug
@@ -456,9 +514,14 @@ int login()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -480,6 +543,13 @@ int login()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
     else if (strcmp(msg, "GOBYE+++") == 0)
@@ -498,6 +568,13 @@ int login()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -510,11 +587,18 @@ int login()
 
     debug("Client: buffer svuotato correttamente\n"); // debug
 
+    //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMIANTA
+
 int friend_request(char *requestId)
 {
     debug("Clinet: inizio richiesta d'amicizia\n"); // debug
@@ -546,8 +630,14 @@ int friend_request(char *requestId)
 
         debug("Client: invio messsaggio FRIE? fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio FRIE? riuscito, inviati %d\n", nByte); // debug
@@ -571,9 +661,14 @@ int friend_request(char *requestId)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -595,6 +690,13 @@ int friend_request(char *requestId)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
     else if (strcmp(msg, "FRIE<+++") == 0)
@@ -613,6 +715,13 @@ int friend_request(char *requestId)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -626,11 +735,18 @@ int friend_request(char *requestId)
 
     debug("Client: buffer svuotato correttamente\n"); // debug
 
+    //rilascio risorse
+    debug("Client: inizio rilascio risorse\n"); // debug
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATO
+
 int send_message(char *idDestination, char *mess)
 {
     debug("Clinet: inizio  trasmissione messaggion"); // debug
@@ -666,8 +782,14 @@ int send_message(char *idDestination, char *mess)
 
         debug("Client: invio messsaggio MESS? fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio MESS? riuscito, inviati %d\n", nByte); // debug
@@ -691,9 +813,14 @@ int send_message(char *idDestination, char *mess)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -716,6 +843,13 @@ int send_message(char *idDestination, char *mess)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
     else if (strcmp(msg, "MESS<+++") == 0)
@@ -734,6 +868,13 @@ int send_message(char *idDestination, char *mess)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -747,11 +888,18 @@ int send_message(char *idDestination, char *mess)
 
     debug("Client: buffer svuotato correttamente\n"); // debug
 
+    //rilascio risorse
+    debug("Client: inizio rilascio risorse\n"); // debug
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATO
+
 int flood(char *mess)
 {
     debug("Clinet: inizio  trasmissione  flood"); // debug
@@ -783,8 +931,14 @@ int flood(char *mess)
 
         debug("Client: invio messsaggio FLOO? fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio FLOO? riuscito, inviati %d\n", nByte); // debug
@@ -808,9 +962,14 @@ int flood(char *mess)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -833,6 +992,13 @@ int flood(char *mess)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -846,11 +1012,18 @@ int flood(char *mess)
 
     debug("Client: buffer svuotato correttamente\n"); // debug
 
+    //rilascio risorse
+    debug("Client: inizio rilascio risorse\n"); // debug
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATA
+
 int list_client(char *listClient)
 {
     debug("Clinet: inizio  richiesta lista client"); // debug
@@ -878,8 +1051,14 @@ int list_client(char *listClient)
 
         debug("Client: invio messsaggio LIST? fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio LIST? riuscito, inviati %d\n", nByte); // debug
@@ -903,9 +1082,14 @@ int list_client(char *listClient)
 
         //debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -922,6 +1106,17 @@ int list_client(char *listClient)
 
         debug("Client: creazione regex fallita\n");
 
+      
+        //rilascio risorse
+        debug("Client: inizio rilascio risorse\n"); // debug
+
+        regfree(&regex);    //rilascio risorse regex
+
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -937,6 +1132,12 @@ int list_client(char *listClient)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -979,9 +1180,13 @@ int list_client(char *listClient)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
-            return NOTOK;
+            //rilascio risorse
+            if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-            // TODO--------------------------------------------------------------------------------------------------
+            return NOTOK;
         }
         msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -1033,8 +1238,13 @@ int read_notify(char *output)
 
         debug("Client: invio messsaggio CONSU fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio CONSU riuscito, inviati %d\n", nByte); // debug
@@ -1056,9 +1266,13 @@ int read_notify(char *output)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -1074,6 +1288,14 @@ int read_notify(char *output)
     {
 
         debug("Client: creazione regex fallita\n");
+
+        //rilascio risorse
+        regfree(&regex);    //rilascio risorse reeìgex
+
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1091,6 +1313,12 @@ int read_notify(char *output)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
 
@@ -1101,6 +1329,12 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1143,6 +1377,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1159,6 +1399,12 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1188,6 +1434,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1204,6 +1456,12 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1231,6 +1489,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1247,6 +1511,14 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
+        return NOTOK;
     }
     else if (strcmp(tipoNotifica, "FRIEN") == 0)
     { // se server trasmette un flusso di tipo risposta a richiesta d'amicizia accept
@@ -1272,6 +1544,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1288,6 +1566,12 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1315,6 +1599,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1331,6 +1621,12 @@ int read_notify(char *output)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
         return NOTOK;
     }
@@ -1352,6 +1648,12 @@ int read_notify(char *output)
 
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
+                //rilascio risorse
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
                 return NOTOK;
             }
 
@@ -1369,6 +1671,12 @@ int read_notify(char *output)
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
     }
     // consultazione fallita
@@ -1380,6 +1688,12 @@ int read_notify(char *output)
     svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
     debug("Client: buffer svuotato correttamente\n"); // debug
+
+    //rilascio risorse
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
     return NOTOK;
 }
@@ -1420,8 +1734,13 @@ int friend_request_response(char response)
 
             debug("Client: invio messsaggio OKIRF fallito, scritti %d\n", nByte); // debug
 
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
             return NOTOK;
-            // TODO--------------------------------------
         }
 
         debug("Client: invio messsaggio OKIRF riuscito, inviati %d\n", nByte); // debug
@@ -1443,9 +1762,13 @@ int friend_request_response(char response)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
-            return NOTOK;
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-            // TODO--------------------------------------------------------------------------------------------------
+            return NOTOK;
         }
         msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -1468,6 +1791,12 @@ int friend_request_response(char response)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
             return NOTOK;
         }
         else
@@ -1477,6 +1806,12 @@ int friend_request_response(char response)
             svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
             debug("Client: buffer svuotato correttamente\n"); // debug
+
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
             return NOTOK;
         }
@@ -1509,8 +1844,13 @@ int friend_request_response(char response)
 
             debug("Client: invio messsaggio NOIRF fallito, scritti %d\n", nByte); // debug
 
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
             return NOTOK;
-            // TODO--------------------------------------
         }
 
         debug("Client: invio messsaggio NOIRF riuscito, inviati %d\n", nByte); // debug
@@ -1532,9 +1872,13 @@ int friend_request_response(char response)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
-            return NOTOK;
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
-            // TODO--------------------------------------------------------------------------------------------------
+            return NOTOK;
         }
         msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -1557,6 +1901,12 @@ int friend_request_response(char response)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
             return NOTOK;
         }
         else
@@ -1567,6 +1917,12 @@ int friend_request_response(char response)
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
+            //rilascio risorse
+            if(client_shutdown() == OK)
+                debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+            else
+                debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
             return NOTOK;
         }
 
@@ -1576,6 +1932,13 @@ int friend_request_response(char response)
     {
         debug("Client: parametro responde non riconosciuto\n");                  // debug
         debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
+
+        //rilascio risorse
+        if(client_shutdown() == OK)
+            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+        else
+            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
         return NOTOK;
         break;
     }
@@ -1583,14 +1946,21 @@ int friend_request_response(char response)
 
     debug("Client: parametro responde non riconosciuto\n");                  // debug
     debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
+
+    //rilascio risorse
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+
     return NOTOK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// NON TERMINATA
+
 int client_shutdown()
 {
-    debug("Clinet: inizio spegnimento e disconnessione\n"); // debug
+    debug("Client: inizio spegnimento e disconnessione\n"); // debug
     debug("Client: invio messaggio IQUIT\n");               // debug
 
     // creo buffer e riempo con messaggio finale
@@ -1611,8 +1981,11 @@ int client_shutdown()
 
         debug("Client: invio messsaggio IQUIT fallito, scritti %d\n", nByte); // debug
 
+        //rilascio risorse
+        close(descrTCP);
+        close(descrUDP);
+
         return NOTOK;
-        // TODO--------------------------------------
     }
 
     debug("Client: invio messsaggio IQUIT riuscito, inviati %d\n", nByte); // debug
@@ -1634,9 +2007,11 @@ int client_shutdown()
 
         debug("Client: buffer svuotato correttamente\n"); // debug
 
-        return NOTOK;
+        //rilascio risorse
+        close(descrTCP);
+        close(descrUDP);
 
-        // TODO--------------------------------------------------------------------------------------------------
+        return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
 
@@ -1649,6 +2024,11 @@ int client_shutdown()
         if (se_bufferVuoto(descrTCP))
         {
             debug("Client: spegnimento e disconnessione avvenuta con successo\n"); // debug
+
+            //rilascio risorse
+            close(descrTCP);
+            close(descrUDP);
+
             return OK;
         }
 
@@ -1657,6 +2037,10 @@ int client_shutdown()
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        //rilascio risorse
+        close(descrTCP);
+        close(descrUDP);
 
         return NOTOK;
     }
@@ -1674,5 +2058,4 @@ int client_shutdown()
     close(descrTCP);
     close(descrUDP);
     return NOTOK;
-    // TODOOOOOOOO-----------------------------------------------------------
 }
