@@ -8,7 +8,7 @@
 
 //----------------VARIABILI GLOBALI-------------------------------------------------------------------------------------------------------------------------------------
 user utente;               // descrittore utente
-int descrTCP;              // descrittore socekt TCP
+int descrTCP;              // descrittore socket TCP
 int descrUDP;              // descrittore socket UDP
 bool seDebugAttivo;        // attiva modalità verbose
 bool seCredenzialiDefault; // attiva le credenziali di default per i test
@@ -90,11 +90,19 @@ int recupero_credenziali()
 
 int initialization(const int argc, const char *args[])
 {
+    //varibile flag
+    bool sePortaUdpImpostata = false;
+
     // inizializzazione variabili globali
     descrTCP = NOTOK;
     descrUDP = NOTOK;
     seDebugAttivo = false;
     seCredenzialiDefault = false;
+
+    //inizializzazione utente
+    memset(utente.id, 0, 9);
+    utente.mdp = 0;
+    utente.port = 0;
 
     //controllo argomenti
     for (unsigned int i = 1; i < argc; i++)
@@ -103,6 +111,17 @@ int initialization(const int argc, const char *args[])
             set_debug(true); // attivazione modalità verbose
         else if (strcmp(args[i], "-c") == 0)
             set_credenzialiDefault(true); // attivazione uso credenziali predefinite
+        else if (strcmp(args[i], "-p") == 0)
+            {
+                sePortaUdpImpostata = true;
+                utente.port = atoi(args[i+1]);  //imposta il valore della porta udp
+                i++;
+            }
+        else if (strcmp(args[i], "-?") == 0){
+            //stampa menu help e termina
+            printf("-d per debug(modalità verbosa)\n-c per credenziali usare di default(credenziali salvate all'interno del codice)\n-p per impostare il valore della porta UDP, non verrà salvata su file\n-? help\n");
+            exit(OK);
+        }
         else
         {
             // Inserita opzione non riconosciuta
@@ -113,9 +132,44 @@ int initialization(const int argc, const char *args[])
         }
     }
 
-    //per generazione porta udp
-    srand(time(NULL));
+    if(!sePortaUdpImpostata)
+    {
+        //verifica porta udp
+        debug("Client: verifica porta udp salvata precedentemente\n");  //debug
+        FILE* fp = fopen("UDP.options", "r");
+        if (fp == NULL)
+        {
+            //file non esistente o altro errore
+            debug("Client: impossibile aprire UDP.options in read\n");  //debug
+            fp = fopen("UDP.options", "w"); //tentativo di apertura in write
+            if(fp == NULL)
+            {
+                //errore
+                debug("Client: impossibile aprire UDP.options in write, errore\n");  //debug
+                //rilascio risorse
+                debug("Client: inizio rilascio risorse\n"); // debug
+                if(client_shutdown() == OK)
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+                else
+                    debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
+                return NOTOK;
+            }
+
+            debug("Client: generato seed per rand porta udp\n");  //debug
+            //per generazione porta udp
+            srand(time(NULL));
+
+            return OK;
+        }
+        //file esistente
+        debug("Client: aperto file UDP.options in read\n");  //debug
+        fscanf(fp, "%d", &utente.port);  //lettura porta
+        debug("Client: letto da UDP.options:\"%d\"\n", utente.port);  //debug
+        fclose(fp); //chiusura fp
+        debug("Client: chiuso file UDP.options\n");  //debug         
+    }
+    
     return OK;
 }
 
@@ -196,13 +250,28 @@ int startup()
     // creazione socket udp per comunicazione con server (gestione notifiche)
     struct sockaddr_in socketUDP;                  // allocazione socket
     socketUDP.sin_family = AF_INET;                // socket ipv4
-    int portaUDP = rand() % 10000;                 // generazione del numero della porta UDP
-    socketUDP.sin_port = htons(portaUDP);          // porta aperta
+
+    //verifico porta udp
+    if(utente.port == 0){
+        //porta non salvata
+        utente.port = rand()%10000;
+        debug("Client: randomizzata porta UDP: %d\n", utente.port);     //debug
+        debug("Client: apertura file UDP.options in write\n");          //debug
+        FILE* fp = fopen("UDP.options", "w");
+
+        fprintf(fp, "%d", utente.port);
+        debug("Client: scritto su UDP.options: %d\n", utente.port); //debug
+
+        fclose(fp);
+        debug("Client: chiuso file UDP.options\n"); //debug
+    }
+
+    socketUDP.sin_port = htons(utente.port);          // porta aperta
     socketUDP.sin_addr.s_addr = htons(INADDR_ANY); // indirizzo in ascolto (tutti)
 
     descrUDP = socket(PF_INET, SOCK_DGRAM, 0); // creazione socket udp ipv4
 
-    debug("Client: generata porta udp %d\n", portaUDP); // debug
+    debug("Client: generata porta udp %d\n", utente.port); // debug
 
     // niente connect dato che connessione non affidabile
 
@@ -230,8 +299,6 @@ int startup()
 
     // bind riuscita
     debug("Client: bind del socket udp riuscio\n"); // debug
-
-    utente.port = portaUDP; // riempo struttura user con porta udp
 
     return OK;
 }

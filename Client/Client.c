@@ -5,6 +5,8 @@
 
     accetta opzione -d per debug
                     -c per credenziali usare di default
+                    -p per impostare il valore della porta UDP, non verrà salvata su file
+                    -? help
 */
 
 #include "Client.h"

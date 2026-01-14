@@ -22,7 +22,6 @@
 typedef struct user user;
 
 // INIZIO DEFINE ------------------------------------------------------------------------------------
-// #define PORTA_UDP_CLIENT 9999 // porta udp ricezione client
 #define DEBUG false // controllo modalita verbose predefinita
 #define DIMBUF 1024  // dimensione buffer
 // credenziali predefinite --------------------------------------------------------------------------
