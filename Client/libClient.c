@@ -299,9 +299,9 @@ int new_client()
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto diversi da offset
 
         debug("Client: invio messsaggio REGIS fallito, scritti %d\n", nByte); // debug
 
@@ -477,9 +477,9 @@ int login()
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scrittodiversi da offset
 
         debug("Client: invio messsaggio CONNE fallito, scritti %d\n", nByte); // debug
 
@@ -624,9 +624,9 @@ int friend_request(char *requestId)
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto diversi da offset
 
         debug("Client: invio messsaggio FRIE? fallito, scritti %d\n", nByte); // debug
 
@@ -776,10 +776,9 @@ int send_message(char *idDestination, char *mess)
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
-
+        // byte scritto minori di offset
         debug("Client: invio messsaggio MESS? fallito, scritti %d\n", nByte); // debug
 
         //rilascio risorse
@@ -925,9 +924,9 @@ int flood(char *mess)
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto minori da offset
 
         debug("Client: invio messsaggio FLOO? fallito, scritti %d\n", nByte); // debug
 
@@ -1045,9 +1044,9 @@ int list_client(char *listClient)
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto minori da offset
 
         debug("Client: invio messsaggio LIST? fallito, scritti %d\n", nByte); // debug
 
@@ -1232,9 +1231,9 @@ int read_notify(char *output)
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto minori da != offset
 
         debug("Client: invio messsaggio CONSU fallito, scritti %d\n", nByte); // debug
 
@@ -1728,9 +1727,9 @@ int friend_request_response(char response)
         int nByte = 0; // contatore byte letti/scritti
 
         nByte = write(descrTCP, msg, offset);
-        if (nByte <= 0) // controllo numero byte scritti
+        if (nByte != offset) // controllo numero byte scritti
         {
-            // byte scritto minori di 1, errore
+            // byte scritto minori da offset
 
             debug("Client: invio messsaggio OKIRF fallito, scritti %d\n", nByte); // debug
 
@@ -1838,9 +1837,9 @@ int friend_request_response(char response)
         int nByte = 0; // contatore byte letti/scritti
 
         nByte = write(descrTCP, msg, offset);
-        if (nByte <= 0) // controllo numero byte scritti
+        if (nByte != offset) // controllo numero byte scritti
         {
-            // byte scritto minori di 1, errore
+            // byte scritto minori da offset
 
             debug("Client: invio messsaggio NOIRF fallito, scritti %d\n", nByte); // debug
 
@@ -1975,9 +1974,9 @@ int client_shutdown()
     int nByte = 0; // contatore byte letti/scritti
 
     nByte = write(descrTCP, msg, offset);
-    if (nByte <= 0) // controllo numero byte scritti
+    if (nByte != offset) // controllo numero byte scritti
     {
-        // byte scritto minori di 1, errore
+        // byte scritto minori da offset
 
         debug("Client: invio messsaggio IQUIT fallito, scritti %d\n", nByte); // debug
 
