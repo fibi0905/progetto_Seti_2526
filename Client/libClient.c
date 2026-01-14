@@ -58,11 +58,9 @@ void set_credenzialiDefault(bool b)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// gestisce recupero creadenziali, può recuperarle da file, o da riga terminale.
-// fare in modo che possa salvare le credenziali l'utente
+// gestisce recupero creadenziali da terminale.
 // il parametro test se vero procedere con le credenziali fittizie
 //
-// per il momento solo con test true
 // NON TERMINATA
 int recupero_credenziali()
 {
@@ -78,8 +76,29 @@ int recupero_credenziali()
         return OK;
     }
 
-    return NOTOK;
-    // TODO------------------------------------------------------------------------------------------------------
+    // inizio registrazione/login utente
+    printf("----REGISTRAZIONE/LOGIN----\n");
+    do
+    {
+        printf("inserisci l'username (8 caratteri alfanumerici):\n");
+        scanf("%s", utente.id);
+
+        // controllo lunghezza username
+        if (strlen(utente.id) != 8)
+            printf("ERRORE: l'username deve essere formato da 8 caratteri alfanumerici\n");
+    } while (strlen(utente.id) != 8);
+
+    do
+    {
+        printf("inserisci la password(compresa tra 0 e 65535):\n");
+        scanf("%d", &utente.mdp);
+
+        // controllo grandezza passoword
+        if (utente.mdp < 0 || utente.mdp > 65535)
+            printf("ERRORE: la password deve essere compresa tra 0 e 65535\n");
+    } while (strlen(utente.id) != 8);
+
+    return OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,17 +264,12 @@ int new_client()
     msg[offset] = ' ';
     offset += 1;
 
+    
+    //conversione password in le
     char lit[3];
-
     usingedIntTOlitEndian(utente.mdp, lit);
 
-    /*
-    // aggiungo al messaggio la password in little endian
-    msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
-    msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
-    offset += 2;
-    */
-
+    //inseritmento in msg
     msg[offset] = lit[0];
     offset += 1;
     msg[offset] = lit[1];
@@ -392,10 +406,15 @@ int login()
     msg[offset] = ' ';
     offset += 1;
 
-    // aggiungo al messaggio la password in little endian
-    msg[offset] = (char)(utente.mdp & 0xFF);            // Byte basso
-    msg[offset + 1] = (char)((utente.mdp >> 8) & 0xFF); // Byte alto
-    offset += 2;
+    //conversione password in le
+    char lit[3];
+    usingedIntTOlitEndian(utente.mdp, lit);
+
+    //inseritmento in msg
+    msg[offset] = lit[0];
+    offset += 1;
+    msg[offset] = lit[1];
+    offset += 1;
 
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);
@@ -871,7 +890,7 @@ int list_client(char *listClient)
 
     // lettura risposta server e controllo numero di byte letti
     nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-    if (nByte != 10 && nByte != 11 && nByte != 12)
+    if (nByte != 10 && nByte != 11 && nByte != 12)  // ipotizzo che num-item(inviato dal server) possa essere 1,2 byte o 3 in base a se client 100 o >100
     {
         // byte letti errati
 
@@ -880,9 +899,9 @@ int list_client(char *listClient)
         debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
         debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
 
-        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+        //svuota_buffer(descrTCP); non controllo buffer dato che server manda più messaggi di seguito
 
-        debug("Client: buffer svuotato correttamente\n"); // debug
+        //debug("Client: buffer svuotato correttamente\n"); // debug
 
         return NOTOK;
 
@@ -922,17 +941,6 @@ int list_client(char *listClient)
         return NOTOK;
     }
 
-    if (!se_bufferVuoto(descrTCP))
-    {
-        debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
-
-        svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
-
-        debug("Client: buffer svuotato correttamente\n"); // debug
-
-        return NOTOK;
-    }
-
     // ricezione corretta
     debug("Client: ricezione numero dei client avvenuta con successo\n"); // debug
 
@@ -958,7 +966,7 @@ int list_client(char *listClient)
     {
         // lettura risposta server e controllo numero di byte letti
         nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-        if (nByte != 17) // ipotizzo che num-item(inviato dal server) possa essere 1,2 byte o 3 in base a se client 100 o >100
+        if (nByte != 17) 
         {
             // byte letti errati
 
@@ -967,7 +975,7 @@ int list_client(char *listClient)
             debug("Client: lettura risposta server fallita, letti %d\n", nByte); // debug
             debug("Client: messaggio server:\"%s\"\n", msg);                     // debug
 
-            svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
+            //svuota_buffer(descrTCP); non controllo buffer dato che il server invia vari messaggi di seguito
 
             debug("Client: buffer svuotato correttamente\n"); // debug
 
@@ -1109,7 +1117,8 @@ int read_notify(char *output)
 
     debug("Client: tipo di notifica: %s\n", tipoNotifica);
 
-    if (strcmp(tipoNotifica, "SSEM>") == 0){ // se server trasmette un flusso di tipo messaggio client
+    if (strcmp(tipoNotifica, "SSEM>") == 0)
+    { // se server trasmette un flusso di tipo messaggio client
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1153,7 +1162,8 @@ int read_notify(char *output)
 
         return NOTOK;
     }
-    else if (strcmp(tipoNotifica, "OOLF>") == 0){ // se server trasmette un flusso di tipo inondazione FLOO
+    else if (strcmp(tipoNotifica, "OOLF>") == 0)
+    { // se server trasmette un flusso di tipo inondazione FLOO
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1196,7 +1206,9 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         return NOTOK;
-    }else if (strcmp(tipoNotifica, "EIRF>") == 0){ // se server trasmette un flusso di tipo richiesta d'amicizia
+    }
+    else if (strcmp(tipoNotifica, "EIRF>") == 0)
+    { // se server trasmette un flusso di tipo richiesta d'amicizia
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1228,14 +1240,16 @@ int read_notify(char *output)
             debug("Client: creazione stringa output avvenuta con successo\n"); // debug
 
             return FRIEND_REQUEST;
-        } 
-        
+        }
+
         debug("Client: buffer non vuoto dopo lettura messaggio, protocollo non rispettato\n");
 
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
-    } else if (strcmp(tipoNotifica, "FRIEN") == 0){ // se server trasmette un flusso di tipo risposta a richiesta d'amicizia accept
+    }
+    else if (strcmp(tipoNotifica, "FRIEN") == 0)
+    { // se server trasmette un flusso di tipo risposta a richiesta d'amicizia accept
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1276,7 +1290,9 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         return NOTOK;
-    } else if (strcmp(tipoNotifica, "NOFRI") == 0){ // se server trasmette un flusso di tipo risposta a richiesta d'amicizia deny
+    }
+    else if (strcmp(tipoNotifica, "NOFRI") == 0)
+    { // se server trasmette un flusso di tipo risposta a richiesta d'amicizia deny
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1317,7 +1333,9 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         return NOTOK;
-    } else if (strcmp(tipoNotifica, "NOCON") == 0){ // se server trasmette un flusso di tipo terminati flussi da consultare
+    }
+    else if (strcmp(tipoNotifica, "NOCON") == 0)
+    { // se server trasmette un flusso di tipo terminati flussi da consultare
         // ricezione messaggio
 
         if (se_bufferVuoto(descrTCP))
@@ -1412,7 +1430,7 @@ int friend_request_response(char response)
 
         // lettura risposta server e controllo numero di byte letti
         nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-        if (nByte != 8) 
+        if (nByte != 8)
         {
             // byte letti errati
 
@@ -1501,7 +1519,7 @@ int friend_request_response(char response)
 
         // lettura risposta server e controllo numero di byte letti
         nByte = read(descrTCP, msg, sizeof(char) * DIMBUF);
-        if (nByte != 8) 
+        if (nByte != 8)
         {
             // byte letti errati
 
@@ -1556,17 +1574,16 @@ int friend_request_response(char response)
     }
     default:
     {
-        debug("Client: parametro responde non riconosciuto\n"); //debug
-        debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n");    //debug
+        debug("Client: parametro responde non riconosciuto\n");                  // debug
+        debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
         return NOTOK;
         break;
     }
     }
 
-    debug("Client: parametro responde non riconosciuto\n"); //debug
-    debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n");    //debug
+    debug("Client: parametro responde non riconosciuto\n");                  // debug
+    debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
     return NOTOK;
-    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

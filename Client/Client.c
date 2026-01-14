@@ -5,8 +5,6 @@
 
     accetta opzione -d per debug
                     -c per credenziali usare di default
-
-    per compilare gcc -Wall Client.c libClient.c -o client
 */
 
 #include "Client.h"
@@ -38,7 +36,7 @@ int main(const int argc, const char *args[])
         // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     }
 
-    debug("Client: inizializzazione risucita\n"); // debug
+    debug("Client: inizializzazione riuscita\n"); // debug
 
     debug("Client: Inizio startup\n"); // debug
 
