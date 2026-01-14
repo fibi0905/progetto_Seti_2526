@@ -96,6 +96,7 @@ int initialization(const int argc, const char *args[])
     seDebugAttivo = false;
     seCredenzialiDefault = false;
 
+    //controllo argomenti
     for (unsigned int i = 1; i < argc; i++)
     {
         if (strcmp(args[i], "-d") == 0)
@@ -111,6 +112,9 @@ int initialization(const int argc, const char *args[])
             return NOTOK;
         }
     }
+
+    //per generazione porta udp
+    srand(time(NULL));
 
     return OK;
 }

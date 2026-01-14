@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <regex.h>
+#include <time.h>
 
 // TYPEDEF ------------------------------------------------------------------------------------------
 typedef struct user user;
