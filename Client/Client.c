@@ -194,7 +194,7 @@ int main(const int argc, const char *args[])
                 {
                     // input/output
                     printf("vuoi accettare? (y/n)\n");
-                    scanf("%c", &userResponse);
+                    scanf(" %c", &userResponse);
 
                     switch (userResponse)
                     {

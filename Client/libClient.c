@@ -12,6 +12,7 @@ int descrTCP;              // descrittore socket TCP
 int descrUDP;              // descrittore socket UDP
 bool seDebugAttivo;        // attiva modalità verbose
 bool seCredenzialiDefault; // attiva le credenziali di default per i test
+bool seErrore;             // se vero c'è stato un errore critico
 
 //----------------INIZIO FUNZIONI "PRIVATE"-----------------------------------------------------------------------------------------------------------------------------
 
@@ -147,6 +148,7 @@ int initialization(const int argc, const char *args[])
                 //errore
                 debug("Client: impossibile aprire UDP.options in write, errore\n");  //debug
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 debug("Client: inizio rilascio risorse\n"); // debug
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
@@ -234,6 +236,7 @@ int startup()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -288,6 +291,7 @@ int startup()
         debug("Client: bind del socket udp fallito\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         debug("Client: inizio rilascio risorse\n"); // debug
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
@@ -319,6 +323,7 @@ int new_client()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -378,6 +383,7 @@ int new_client()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -409,6 +415,7 @@ int new_client()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -437,6 +444,7 @@ int new_client()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -462,6 +470,7 @@ int new_client()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -480,6 +489,7 @@ int new_client()
 
     //rilascio risorse
     debug("Client: inizio rilascio risorse\n"); // debug
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -500,6 +510,7 @@ int login()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -556,6 +567,7 @@ int login()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -587,6 +599,7 @@ int login()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -616,6 +629,7 @@ int login()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -641,6 +655,7 @@ int login()
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -659,11 +674,12 @@ int login()
     debug("Client: buffer svuotato correttamente\n"); // debug
 
     //rilascio risorse
-        debug("Client: inizio rilascio risorse\n"); // debug
-        if(client_shutdown() == OK)
-            debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
-        else
-            debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
+    debug("Client: inizio rilascio risorse\n"); // debug
+    seErrore = true;    //errore critico, necessario spegnimento forzato
+    if(client_shutdown() == OK)
+        debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
+    else
+        debug("Client: fine rilascio risorse rilascio risorse terminato con esito negativo\n"); // debug
 
     return NOTOK;
 }
@@ -703,6 +719,7 @@ int friend_request(char *requestId)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -734,6 +751,7 @@ int friend_request(char *requestId)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -763,6 +781,7 @@ int friend_request(char *requestId)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -788,6 +807,7 @@ int friend_request(char *requestId)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -808,6 +828,7 @@ int friend_request(char *requestId)
 
     //rilascio risorse
     debug("Client: inizio rilascio risorse\n"); // debug
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -854,6 +875,7 @@ int send_message(char *idDestination, char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -885,6 +907,7 @@ int send_message(char *idDestination, char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -915,6 +938,7 @@ int send_message(char *idDestination, char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -940,6 +964,7 @@ int send_message(char *idDestination, char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -960,6 +985,7 @@ int send_message(char *idDestination, char *mess)
 
     //rilascio risorse
     debug("Client: inizio rilascio risorse\n"); // debug
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -1003,6 +1029,7 @@ int flood(char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1034,6 +1061,7 @@ int flood(char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1064,6 +1092,7 @@ int flood(char *mess)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1084,6 +1113,7 @@ int flood(char *mess)
 
     //rilascio risorse
     debug("Client: inizio rilascio risorse\n"); // debug
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -1123,6 +1153,7 @@ int list_client(char *listClient)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1154,6 +1185,7 @@ int list_client(char *listClient)
 
         //rilascio risorse
         debug("Client: inizio rilascio risorse\n"); // debug
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1182,6 +1214,8 @@ int list_client(char *listClient)
 
         regfree(&regex);    //rilascio risorse regex
 
+        seErrore = true;    //errore critico, necessario spegnimento forzato
+
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1202,6 +1236,8 @@ int list_client(char *listClient)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        seErrore = true;    //errore critico, necessario spegnimento forzato
 
         //rilascio risorse
         if(client_shutdown() == OK)
@@ -1251,6 +1287,7 @@ int list_client(char *listClient)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1283,6 +1320,8 @@ int list_client(char *listClient)
         svuota_buffer(descrTCP); // svuoto buffer dato che il messaggio ricevuto non rispetta il protocollo
 
         debug("Client: buffer svuotato correttamente\n"); // debug
+
+        seErrore = true;    //errore critico, necessario spegnimento forzato
 
         //rilascio risorse
         if(client_shutdown() == OK)
@@ -1331,6 +1370,7 @@ int read_notify(char *output)
         debug("Client: invio messsaggio CONSU fallito, scritti %d\n", nByte); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1359,6 +1399,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1384,6 +1425,8 @@ int read_notify(char *output)
         //rilascio risorse
         regfree(&regex);    //rilascio risorse reeìgex
 
+        seErrore = true;    //errore critico, necessario spegnimento forzato
+
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1406,6 +1449,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1423,6 +1467,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1470,6 +1515,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1493,6 +1539,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1527,6 +1574,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1550,6 +1598,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1582,6 +1631,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1605,6 +1655,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1637,6 +1688,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1660,6 +1712,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1692,6 +1745,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1715,6 +1769,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1741,6 +1796,7 @@ int read_notify(char *output)
                 debug("Client: buffer svuotato correttamente\n"); // debug
 
                 //rilascio risorse
+                seErrore = true;    //errore critico, necessario spegnimento forzato
                 if(client_shutdown() == OK)
                     debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
                 else
@@ -1764,6 +1820,7 @@ int read_notify(char *output)
         debug("Client: buffer svuotato correttamente\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -1782,6 +1839,7 @@ int read_notify(char *output)
     debug("Client: buffer svuotato correttamente\n"); // debug
 
     //rilascio risorse
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -1827,6 +1885,7 @@ int friend_request_response(char response)
             debug("Client: invio messsaggio OKIRF fallito, scritti %d\n", nByte); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1855,6 +1914,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1884,6 +1944,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1900,6 +1961,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1937,6 +1999,7 @@ int friend_request_response(char response)
             debug("Client: invio messsaggio NOIRF fallito, scritti %d\n", nByte); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1965,6 +2028,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -1994,6 +2058,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -2010,6 +2075,7 @@ int friend_request_response(char response)
             debug("Client: buffer svuotato correttamente\n"); // debug
 
             //rilascio risorse
+            seErrore = true;    //errore critico, necessario spegnimento forzato
             if(client_shutdown() == OK)
                 debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
             else
@@ -2026,6 +2092,7 @@ int friend_request_response(char response)
         debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
 
         //rilascio risorse
+        seErrore = true;    //errore critico, necessario spegnimento forzato
         if(client_shutdown() == OK)
             debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
         else
@@ -2040,6 +2107,7 @@ int friend_request_response(char response)
     debug("Client: trasmissione risposta a richiesta d'amicizia fallita\n"); // debug
 
     //rilascio risorse
+    seErrore = true;    //errore critico, necessario spegnimento forzato
     if(client_shutdown() == OK)
         debug("Client: fine rilascio risorse rilascio risorse terminato con successo\n"); // debug
     else
@@ -2077,6 +2145,10 @@ int client_shutdown()
         close(descrTCP);
         close(descrUDP);
 
+        //controllo se errore critico
+        if(seErrore)
+            exit(NOTOK);
+
         return NOTOK;
     }
 
@@ -2103,6 +2175,10 @@ int client_shutdown()
         close(descrTCP);
         close(descrUDP);
 
+        //controllo se errore critico
+        if(seErrore)
+            exit(NOTOK);
+
         return NOTOK;
     }
     msg[nByte] = '\0'; // imposto fine stringa per evitare di leggere caratteri di messaggi precedenti
@@ -2121,6 +2197,10 @@ int client_shutdown()
             close(descrTCP);
             close(descrUDP);
 
+            //controllo se errore critico
+            if(seErrore)
+                exit(NOTOK);
+
             return OK;
         }
 
@@ -2133,6 +2213,10 @@ int client_shutdown()
         //rilascio risorse
         close(descrTCP);
         close(descrUDP);
+
+        //controllo se errore critico
+        if(seErrore)
+            exit(NOTOK);
 
         return NOTOK;
     }
@@ -2149,5 +2233,10 @@ int client_shutdown()
 
     close(descrTCP);
     close(descrUDP);
+
+    //controllo se errore critico
+    if(seErrore)
+        exit(NOTOK);
+
     return NOTOK;
 }
