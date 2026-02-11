@@ -1153,9 +1153,9 @@ int flood(char *mess)
     memcpy(msg + offset, "FLOO? ", 6);
     offset += 6; // Spostiamo offset avanti di 6
 
-    // inserisco mess, massimo 200 caratteri + '\0'
-    snprintf(msg + offset, 201, "%-8s ", mess);
-    offset += 200;
+    // inserisco mess, massimo 200 caratteri compreso '\0'
+    memcpy(msg + offset, mess, strlen(mess));
+    offset += strlen(mess); // Spostiamo offset avanti di lunghezza mess 
 
     // aggiungo "+++"
     memcpy(msg + offset, "+++\0", 4);
@@ -1314,7 +1314,7 @@ int list_client(char *listClient)
     debug("Client: lettura risposta server\n"); // debug
 
     // lettura risposta server e controllo numero di byte letti
-    nByte = read(descrTCP, msg, sizeof(char) * 11);
+    nByte = read(descrTCP, msg, sizeof(char) * 12);
     if (nByte != 11) 
     {
         // byte letti errati
