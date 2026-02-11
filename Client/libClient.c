@@ -1455,6 +1455,7 @@ int list_client(char *listClient)
         debug("Client: id client=\"%s\"\n", token); // debug
 
         strcat(listClient, token); // aggiunta alla lista dei client
+        strcat(list_client, " ");
     }
 
     //controllo buffer strtok
