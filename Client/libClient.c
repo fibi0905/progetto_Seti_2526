@@ -681,10 +681,10 @@ int login()
     offset += 1;
 
     // %04d : usa 5 byte, l'ultimo per il '\0'
-    snprintf(msg + offset, 5, "%04d", utente.port);
-    offset += 4;
-    msg[offset] = ' ';
-    offset += 1;
+    // snprintf(msg + offset, 5, "%04d", utente.port);
+    // offset += 4;
+    // msg[offset] = ' ';
+    // offset += 1;
 
     //conversione password in le
     char lit[3];

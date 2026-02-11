@@ -691,7 +691,7 @@ unsigned int CONNECT(const char *msg){
     pthread_mutex_lock(&semList);
 
     if(listUser[pox].pass != pass){
-        if(DEB) printf("CONNECT: password non corretta\n   Pass in database: %u\n   Pass in avente: %u", listUser[pox].pass, pass);
+        if(DEB) printf("CONNECT: password non corretta\n   Pass in database: %u\n   Pass in passata: %u\n", listUser[pox].pass, pass);
         pthread_mutex_unlock(&semList);
         return NOTOK;
     }
