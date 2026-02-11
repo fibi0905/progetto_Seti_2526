@@ -14,6 +14,7 @@ pthread_t tid;             // id del thread
 bool seDebugAttivo;        // attiva modalità verbose
 bool seCredenzialiDefault; // attiva le credenziali di default per i test
 bool seErrore;             // se vero c'è stato un errore critico
+int numNotifiche;          // numero notifiche
 
 //----------------INIZIO FUNZIONI "PRIVATE"-----------------------------------------------------------------------------------------------------------------------------
 
@@ -114,6 +115,8 @@ void* notificheUDP(void* args)
 
         debug("Thread: ricevuto notifica udp, numero byte ricevuto %d\n", nByte);  //debug
 
+        numNotifiche++; //aumento numero notifiche
+
         if (nByte != 3)
         {
             // byte letti insufficienti
@@ -144,7 +147,6 @@ void* notificheUDP(void* args)
             //ricevuto una richiesta di amicizia
             printf("---NOTIFICA------------------------------------\n");
             printf("- ricevuta richiesta di amicizia\n");
-            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
             printf("- hai ancora %d notifiche da leggere\n", numNotifiche);
             printf("-----------------------------------------------\n");
 
@@ -152,7 +154,6 @@ void* notificheUDP(void* args)
             //ricevuto una richiesta di amicizia accettata
             printf("---NOTIFICA------------------------------------\n");
             printf("- una richiesta di amicizia è stata accettata\n");
-            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
             printf("- hai ancora %d notifiche da leggere\n", numNotifiche);
             printf("-----------------------------------------------\n");
 
@@ -160,7 +161,6 @@ void* notificheUDP(void* args)
             //ricevuto una richiesta di amicizia rifiutata
             printf("---NOTIFICA------------------------------------\n");
             printf("- una richiesta di amicizia è stata rifiutata\n");
-            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
             printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
             printf("-----------------------------------------------\n");
 
@@ -168,7 +168,6 @@ void* notificheUDP(void* args)
             //ricevuto un messaggio di testo
             printf("---NOTIFICA------------------------------------\n");
             printf("- ricevuto messaggio di testo\n");
-            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
             printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
             printf("------------------------------------------------\n");
 
@@ -176,7 +175,6 @@ void* notificheUDP(void* args)
             //ricevuto un messaggio di tipo flood
             printf("---NOTIFICA------------------------------------\n");
             printf("- ricevuto messaggio di tipo flood\n");
-            int numNotifiche = -1;  //DA MODIFICAREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
             printf("-hai ancora %d notifiche da leggere\n", numNotifiche);
             printf("-----------------------------------------------\n");
 
@@ -220,6 +218,7 @@ int initialization(const int argc, const char *args[])
     descrUDP = NOTOK;
     seDebugAttivo = false;
     seCredenzialiDefault = false;
+    numNotifiche = 0;
 
     //varibile id thread
     tid = 0;
@@ -1455,7 +1454,8 @@ int list_client(char *listClient)
         debug("Client: id client=\"%s\"\n", token); // debug
 
         strcat(listClient, token); // aggiunta alla lista dei client
-        strcat(list_client, " ");
+        char temp[1] = " ";
+        strcat(listClient, temp);
     }
 
     //controllo buffer strtok
