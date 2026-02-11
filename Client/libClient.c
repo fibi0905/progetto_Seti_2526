@@ -1314,8 +1314,8 @@ int list_client(char *listClient)
     debug("Client: lettura risposta server\n"); // debug
 
     // lettura risposta server e controllo numero di byte letti
-    nByte = read(descrTCP, msg, sizeof(char) * 11);
-    if (nByte != 11) 
+    nByte = read(descrTCP, msg, sizeof(char) * 12);
+    if (nByte != 12) 
     {
         // byte letti errati
 
