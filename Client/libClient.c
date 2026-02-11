@@ -1315,7 +1315,7 @@ int list_client(char *listClient)
 
     // lettura risposta server e controllo numero di byte letti
     nByte = read(descrTCP, msg, sizeof(char) * 11);
-    if (nByte != 10 && nByte != 11 && nByte != 12)  // ipotizzo che num-item(inviato dal server) possa essere 1,2 byte o 3 in base a se client 100 o >100
+    if (nByte != 11) 
     {
         // byte letti errati
 
@@ -1346,7 +1346,7 @@ int list_client(char *listClient)
     debug("Client: creazione regex per valutazione risposta server\n"); // devug
 
     regex_t regex; // variabile regex
-    char *pattern = "^RLIST (00[1-9]|0[1-9][0-9]|100)\\+\\+\\+$";
+    char *pattern = "^RLIST [0-9]{3}\\+\\+\\+$";
 
     if (regcomp(&regex, pattern, REG_EXTENDED))
     {
