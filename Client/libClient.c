@@ -1414,6 +1414,8 @@ int list_client(char *listClient)
 
     strcpy(listClient, ""); // iniziallizzo
 
+    unsigned int fi = 1;
+
     for (unsigned int i = 0; i < nClient; i++)
     {
         // lettura risposta server e controllo numero di byte letti
@@ -1453,9 +1455,13 @@ int list_client(char *listClient)
 
         debug("Client: id client=\"%s\"\n", token); // debug
 
+        if(fi == 0){
+            strcat(listClient, ",\0");
+        }
+    
+        fi =0;
         strcat(listClient, token); // aggiunta alla lista dei client
-        char temp[1] = " ";
-        strcat(listClient, temp);
+        
     }
 
     //controllo buffer strtok
