@@ -16,7 +16,7 @@
 ---
 ## Presentazione
 
-Questo repository contiene il progetto sviluppato per il corso universitario **SETI 2025/2026 (Sistemi Elaborativi e Tecnologie di Internet)**.
+Questo repository contiene il progetto sviluppato per il corso universitario **SETI 2025/2026 (Sistemi di Elaborazione e Trasmissione dell'Informazione)**.
 
 L'obiettivo del progetto era realizzare un sistema **Client-Server** per la gestione di una rubrica di rete, implementando la comunicazione tramite **TCP** e **UDP** e rispettando rigorosamente le specifiche tecniche fornite dal docente.
 
@@ -42,7 +42,6 @@ Il progetto è stato sviluppato seguendo un'architettura **Client-Server**, nell
     | • Invio richieste al server                          |
     | • Ricezione delle risposte                           |
     |                                                      |
-    | Sviluppato da: Davide Ferraro                        |
     +-------------------------+----------------------------+
                               │
                               │
@@ -59,24 +58,8 @@ Il progetto è stato sviluppato seguendo un'architettura **Client-Server**, nell
     | • Gestione dei protocolli TCP e UDP                  |
     | • Elaborazione delle risposte                        |
     |                                                      |
-    | Progettato e sviluppato da: Fabio Nicolosi           |
     +------------------------------------------------------+
 ```
-
-<br></br>
-
----
-## Suddivisione delle responsabilità
-
-L'implementazione è stata suddivisa in modo netto tra i due membri del team:
-
-| Componente | Responsabile |
-|------------|--------------|
-| **Server** | **Fabio Nicolosi** |
-| **Client** | **Davide Ferraro** |
-
-Questa suddivisione ha permesso di lavorare in parallelo, mantenendo un'interfaccia di comunicazione condivisa e rispettando le specifiche del progetto.
-
 
 
 <br></br>
